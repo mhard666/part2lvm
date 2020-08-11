@@ -1,7 +1,7 @@
 #!/bin/bash
 #IFS=$'\n' 
 
-var='lv_root 10G ext4
+var='lv_root 10G ext4 /mnt/new
 lv_swap 16G swap
 lv_home 20G ext4
 lv_opt 2G ext4
@@ -21,6 +21,14 @@ do
     name=$(echo "$line" | awk '{print $1}')
     size=$(echo "$line" | awk '{print $2}')
     type=$(echo "$line" | awk '{print $3}')
-    echo "$name --- $size --- $type"
+    mp=$(echo "$line" | awk '{print $4}')
+    echo "$name --- $size --- $type --- $mp"
+    x=$(echo $mp)
+    if [ "$x" != "" ]
+    then 
+        echo $x 
+    else
+        echo xxxxxxxxx
+    fi
 done <<<"$var"
 

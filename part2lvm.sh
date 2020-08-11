@@ -21,6 +21,7 @@ lvmVgName="vg_debian"
 vgcreate $lvmVgName $lvmPvDevice
 
 # Logical Volumes anlegen
+# lvmLvName lvmLvSize fsType fsMountPoint fsTempMountPoint
 lvmLogicalVolumeData='lv_root 10G ext4
 lv_swap 16G swap
 lv_home 20G ext4
@@ -36,6 +37,8 @@ do
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
+    fsMountPoint=$(echo "$line" | awk '{print $4}')
+
     echo "$lvmLvName : $lvmLvSize : $fsType"
 
     lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName
@@ -51,7 +54,7 @@ do
     else
         # nicht unterstützt - Fehler
         echo "Kein unterstütztes Dateisystem - übersprungen."
-
+    fi
 done <<<"$lvmLogicalVolumeData"
 
 
