@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # part2lvm.sh
-# v. 0.0.1     - initiale Version
-
+# v. 0.0.2  - 20200811  - mh    - LVM einrichtung vollständig, ungetestet
+# v. 0.0.1  - 20200811  - mh    - initiale Version
+#
+# Author: Mirko Härtwig
 
 # root-Modus wechseln
 sudo su
