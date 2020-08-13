@@ -15,6 +15,8 @@ lv_var_lib_postgresql 40G ext4'
 #blubb1 blubb2 blubb3')
 # echo "$var"
 
+newVar=""
+
 while read -r line
 do 
   echo "A line of input: $line"
@@ -23,6 +25,15 @@ do
     type=$(echo "$line" | awk '{print $3}')
     mp=$(echo "$line" | awk '{print $4}')
     echo "$name --- $size --- $type --- $mp"
+
+    # Wenn newVar nicht leer ist erstmal einen Zeilenumbruch dranhängen...
+    if [ "$newVar" != "" ] 
+    then
+        newVar+="\n"
+    fi
+
+    newVar+="$name :: $size :: $style"
+
     x=$(echo $mp)
     if [ "$x" != "" ]
     then 
@@ -32,3 +43,8 @@ do
     fi
 done <<<"$var"
 
+x=$(echo -e "$newVar")
+while read -r line 
+do
+    echo " ---> $line"
+done <<<"$x"
