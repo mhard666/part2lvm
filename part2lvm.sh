@@ -170,22 +170,54 @@ done <<<"$x"
 # FSTAB IM NEUEN ROOT ANPASSEN
 # ============================
 
+# prüfen, ob ein /boot Eintrag existiert - wenn nicht, abbruch
+row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' /etc/fstab)
+# prüfen ob row != "", sonst ist keine extra boot Partition vorhanden, was ggf die einrichtung des Bootloaders verkompliziert...
+if [ "$row" == "" ]
+then
+    # Abfrage mit option zu beenden...
+    echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
+    read $x
+    ## Abfrage...
+fi
+
+# $row zurücksetzen...
+row=""
+
 # alten root-Eintrag ermitteln.
-oldRoot=$(grep '^UUID' /etc/fstab | grep '/\s*ext4')
+row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' /etc/fstab)
+# Prüfen ob $row != "" (Wenn $row != "" ist eine root-Partition vorhanden...)
+if [ "$row" != "" ]
+then
+    # Ergebnis in $row zerlegen in den Zeilentext...
+    oldRoot=$(echo $row | awk -F':' '{print $2}')
+    # ...und die Zeilennummer
+    oldRootLine=$(echo $row | awk -F':' '{print $1}')
 
-# ersetzen mit # + Zeile alte Partition
-sed '/\<UIDalt\>/ c \
-Komplette Zeile mit alter UID und vorangestellter #
+    # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
+    sed "$oldRootLine c \
+    # $oldRoot" /etc/fstab
 
-# neue UID der root part anfügen
-sed '/\<UIDalt\>/ a \
-Komplette Zeile mit neuer root UID
 
-# neue UID der xxx part anfügen
-sed '/\<UIDroot\>/ a \
-Komplette Zeile mit neuer xxx UID
-'
-# ...
+
+    ## LOOP neue Eintrage setzen...
+    ## wenn root Eintrag an ermittelter Pos
+    ## andere Einträge ans Ende der Datei
+
+    # neue UID der root part anfügen
+    sed '/\<UIDalt\>/ a \
+    Komplette Zeile mit neuer root UID
+
+    # neue UID der xxx part anfügen
+    sed '/\<UIDroot\>/ a \
+    Komplette Zeile mit neuer xxx UID
+
+    # ...
+else
+    # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
+    echo "FEHLER: Kein root-Filesystem-Eintrag in /etc/fstab gefunden. Das Script wird abgebrochen."
+    Exit
+fi
 
 # GRUB AKTUALISIEREN
 # ==================
