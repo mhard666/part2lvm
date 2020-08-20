@@ -9,6 +9,12 @@
 # root-Modus wechseln
 sudo su
 
+# Variablen...
+fsSourceRootDrive=""
+fsSourceBootDrive=""
+fsSourceRootPartition=""
+fsSourceBootPartition=""
+
 # LVM AUF DER NEUEN PARTITION EINRICHTEN
 # ======================================
 
@@ -29,7 +35,7 @@ lv_opt 2G ext4 /opt /mnt/dst/opt
 lv_var 5G ext4 /var /mnt/dst/var
 lv_var_log 5G ext4 /var/log /mnt/dst/var/log
 lv_var_tmp 5G ext4 /var/tmp /mnt/dst/var/log
-lv_var_lib_postgresql 40G ext4' /var/lib/postgresql
+lv_var_lib_postgresql 40G ext4 /var/lib/postgresql'
 
 # Variable zur Zeilenweisen Aufbereitung der Ergebnisse aus dem vorhergehenden Loop zur Weiterverarbeitung im nächsten Loop
 nextLoop=""
@@ -83,7 +89,8 @@ do
 done <<<"$lvmLogicalVolumeData"
 
 
-# NÄCHSTER LOOP - NEUES FS MOUNTEN UND ALTES SYNCEN
+# NÄCHSTER LOOP: Neues Filesystem mounten und altes dahin syncen
+# ==============================================================
 
 # MountPoint für QuellFileSystem
 fsOMP="/mnt/src"
@@ -92,6 +99,7 @@ fsOMP="/mnt/src"
 if [ ! -d "$fsOMP" ]
 then
     mkdir $fsOMP
+    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
     # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
     # Script-Abbruch bei Fehler...
 fi 
@@ -101,11 +109,12 @@ if [ -n "$(ls -A $fsOMP)" ]
 then
     # Alles unterhalb des Mountpoint löschen
     find $fsOMP -mindepth 1 -delete
+    ### ToDo: ggf. Warnung bei Fehler
     # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
 fi
 
 # Souce mounten
-mkdir "$fsOMP"
+# mkdir "$fsOMP"
 mount "/dev/sda2" "$fsOMP"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
@@ -128,6 +137,7 @@ do
         if [ ! -d "$fsTempMountPoint" ]
         then
             mkdir $fsTempMountPoint
+            ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
             # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
             # Script-Abbruch bei Fehler...
         fi 
@@ -137,7 +147,7 @@ do
         then
             # Alles unterhalb des Mountpoint löschen
             find $fsTempMountPoint -mindepth 1 -delete
-            # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+            ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
         fi
 
         # In Mountpoint mounten
@@ -151,26 +161,10 @@ do
 done <<<"$x"
 
 
-# NÄCHSTER LOOP
-x=$(echo -e "$nextLoop")
-while read -r line 
-do
-    echo " ---> $line"
-    lvmLvName=$(echo "$line" | awk '{print $1}')
-    lvmLvSize=$(echo "$line" | awk '{print $2}')
-    fsType=$(echo "$line" | awk '{print $3}')
-    fsMountPoint=$(echo "$line" | awk '{print $4}')
-    fsTempMountPoint=$(echo "$line" | awk '{print $5}')
-    fsUUID=$(echo "$line" | awk '{print $6}')
-    fsMapper=$(echo "$line" | awk '{print $7}')
-done <<<"$x"
-
-
-
 # FSTAB IM NEUEN ROOT ANPASSEN
 # ============================
 
-# prüfen, ob ein /boot Eintrag existiert - wenn nicht, abbruch
+# prüfen, ob ein /boot Eintrag existiert - wenn nicht, evtl. abbruch
 row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' /etc/fstab)
 # prüfen ob row != "", sonst ist keine extra boot Partition vorhanden, was ggf die einrichtung des Bootloaders verkompliziert...
 if [ "$row" == "" ]
@@ -178,7 +172,7 @@ then
     # Abfrage mit option zu beenden...
     echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
     read $x
-    ## Abfrage...
+    ### ToDo: Abfrage...
 fi
 
 # $row zurücksetzen...
@@ -197,27 +191,86 @@ then
     # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
     sed "$oldRootLine c \
     # $oldRoot" /etc/fstab
-
-
-
-    ## LOOP neue Eintrage setzen...
-    ## wenn root Eintrag an ermittelter Pos
-    ## andere Einträge ans Ende der Datei
-
-    # neue UID der root part anfügen
-    sed '/\<UIDalt\>/ a \
-    Komplette Zeile mit neuer root UID
-
-    # neue UID der xxx part anfügen
-    sed '/\<UIDroot\>/ a \
-    Komplette Zeile mit neuer xxx UID
-
-    # ...
 else
     # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
     echo "FEHLER: Kein root-Filesystem-Eintrag in /etc/fstab gefunden. Das Script wird abgebrochen."
     Exit
 fi
+
+
+# NÄCHSTER LOOP: Logical Volumes in /etc/fstab eintragen
+# ======================================================
+
+x=$(echo -e "$nextLoop")
+while read -r line 
+do
+    echo " ---> $line"
+    lvmLvName=$(echo "$line" | awk '{print $1}')
+    lvmLvSize=$(echo "$line" | awk '{print $2}')
+    fsType=$(echo "$line" | awk '{print $3}')
+    fsMountPoint=$(echo "$line" | awk '{print $4}')
+    fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    fsUUID=$(echo "$line" | awk '{print $6}')
+    fsMapper=$(echo "$line" | awk '{print $7}')
+
+    # kein Mountpoint, dann auf "none" setzen (swap)
+    if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
+    fsOptions="defaults"
+    fsDump="0"
+    fsPass="2"
+    isRoot="0"
+    # bei swap-Filesystem Variablen $fsPass und $fsOptions abweichend vom Default-Wert belegen
+    # bei root-Partition Variablen $fsPass und $fsOptions abweichend von Default-Wert belegen
+    if [ "$fsType" == "swap" ] 
+    then 
+        fsOptions="sw" 
+        fsPass="0"
+    elif [ "$fsMountPoint" == "/" ] 
+    then
+        fsOptions="errors=remount-ro"
+        fsPass="1"
+        isRoot="1"
+    fi
+
+# <file system>                  <mount point>   <type>  <options>          <dump>  <pass>
+# /dev/mapper/debian--vg-root    /               ext4    errors=remount-ro  0       1
+# /dev/mapper/debian--vg-home    /home           ext4    defaults           0       2
+# /dev/mapper/debian--vg-tmp     /tmp            ext4    defaults           0       2
+# /dev/mapper/debian--vg-var     /var            ext4    defaults           0       2
+# /dev/mapper/debian--vg-swap_1  none            swap    sw                 0       0
+
+#              <file system> <mount point>   <type>  <options>       <dump>  <pass>
+#                        1   1     2         3       3 4         5   5     6 6       7
+#              0....5....0...45....0....5....0....5..8.0....5....0...45....0.2..5....0
+#              13            15              7       15              7       6
+
+    # Variablenlänge formatieren...
+    fsMapper=$(printf "%-13s" $fsMapper)
+    fsMountPoint=$(printf "%-15s" $fsMountPoint)
+    fsType=$(printf "%-7s" $fsType)
+    fsOptions=$(printf "%-15s" $fsOptions)
+    fsDump=$(printf "%-7s" $fsDump)
+    # fsPass=$(printf "%-16s" $fsPass)
+
+    # fstab-Zeile bauen...
+    fsTabLine="$fsMapper $fsMountPoint $fsType $fsOptions $fsDump $fsPass"
+
+    # Prüfen ob root-Partition - dann unterhalb der auskommentierten Zeile einfügen    
+    if [ "$isRoot" == "1" ]
+    then
+        # neue UID der root part anfügen
+        sed "$oldRootLine a \
+            $fsTabLine" /etc/fstab
+    # sonst ist es keine root-Partition - dann am Ende der Datei einfügen...
+    else
+        # Anzahl Zeilen ermitteln = letzte Zeile
+        lastRowLine=$(cat /etc/fstab | wc -l)
+        # neue UID der xxx part anfügen
+        sed "$lastRowLine a \
+            $fsTabLine" /etc/fstab
+    fi
+done <<<"$x"
+
 
 # GRUB AKTUALISIEREN
 # ==================
