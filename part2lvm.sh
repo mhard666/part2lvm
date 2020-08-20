@@ -232,17 +232,17 @@ do
         isRoot="1"
     fi
 
-# <file system>                  <mount point>   <type>  <options>          <dump>  <pass>
-# /dev/mapper/debian--vg-root    /               ext4    errors=remount-ro  0       1
-# /dev/mapper/debian--vg-home    /home           ext4    defaults           0       2
-# /dev/mapper/debian--vg-tmp     /tmp            ext4    defaults           0       2
-# /dev/mapper/debian--vg-var     /var            ext4    defaults           0       2
-# /dev/mapper/debian--vg-swap_1  none            swap    sw                 0       0
+    # <file system>                  <mount point>   <type>  <options>          <dump>  <pass>
+    # /dev/mapper/debian--vg-root    /               ext4    errors=remount-ro  0       1
+    # /dev/mapper/debian--vg-home    /home           ext4    defaults           0       2
+    # /dev/mapper/debian--vg-tmp     /tmp            ext4    defaults           0       2
+    # /dev/mapper/debian--vg-var     /var            ext4    defaults           0       2
+    # /dev/mapper/debian--vg-swap_1  none            swap    sw                 0       0
 
-#              <file system> <mount point>   <type>  <options>       <dump>  <pass>
-#                        1   1     2         3       3 4         5   5     6 6       7
-#              0....5....0...45....0....5....0....5..8.0....5....0...45....0.2..5....0
-#              13            15              7       15              7       6
+    # <file system> <mount point>   <type>  <options>       <dump>  <pass>
+    #           1   1     2         3       3 4         5   5     6 6       7
+    # 0....5....0...45....0....5....0....5..8.0....5....0...45....0.2..5....0
+    # 13            15              7       15              7       6
 
     # Variablenlänge formatieren...
     fsMapper=$(printf "%-13s" $fsMapper)
