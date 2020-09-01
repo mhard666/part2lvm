@@ -37,6 +37,16 @@ lv_var_log 5G ext4 /var/log /mnt/dst/var/log
 lv_var_tmp 5G ext4 /var/tmp /mnt/dst/var/log
 lv_var_lib_postgresql 40G ext4 /var/lib/postgresql'
 
+#zum testen...
+lvmLogicalVolumeData='lv_root 3G ext4 / /mnt/dst
+lv_swap 1G swap
+lv_home 2G ext4 /home /mnt/dst/home
+lv_opt 1G ext4 /opt /mnt/dst/opt
+lv_var 2G ext4 /var /mnt/dst/var
+lv_var_log 2G ext4 /var/log /mnt/dst/var/log
+lv_var_tmp 2G ext4 /var/tmp /mnt/dst/var/log
+lv_var_lib_postgresql 2G ext4 /var/lib/postgresql'
+
 # Variable zur Zeilenweisen Aufbereitung der Ergebnisse aus dem vorhergehenden Loop zur Weiterverarbeitung im nächsten Loop
 nextLoop=""
 
