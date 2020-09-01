@@ -79,9 +79,9 @@ do
     fi
 
     # Dateisysteme ausgeben, UUID ermitteln
-    fsUUID=$(blkid -L | grep -i "\-$lvmLvName:" | grep -o -E '\"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\"')
+    fsUUID=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\"')
     # Dateisysteme ausgeben, Mapper ermitteln
-    fsMapper=$(blkid -L | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-z\-]*')
+    fsMapper=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-z\-]*')
 
     
     # ERGEBISSE FÜR NÄCHSTE SCHLEIFE AUFARBEITEN
