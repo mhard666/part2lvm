@@ -6,14 +6,14 @@
 #
 # Author: Mirko Härtwig
 
-# root-Modus wechseln
-sudo su
+# Dieses Script muss als root ausgeführt werden!
+## ToDo: Auf root testen...
 
 # Variablen...
-fsSourceRootDrive=""
-fsSourceBootDrive=""
-fsSourceRootPartition=""
-fsSourceBootPartition=""
+fsSourceRootDrive="/dev/sda"
+fsSourceBootDrive="/dev/sda"
+fsSourceRootPartition="/dev/sda2"
+fsSourceBootPartition="/dev/sda1"
 
 # LVM AUF DER NEUEN PARTITION EINRICHTEN
 # ======================================
@@ -95,7 +95,8 @@ done <<<"$lvmLogicalVolumeData"
 # MountPoint für QuellFileSystem
 fsOMP="/mnt/src"
 
-# Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, prüfen ob Verzeichnis leer, wenn nicht, leeren...
+# Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
+# prüfen ob Verzeichnis leer, wenn nicht, leeren...
 if [ ! -d "$fsOMP" ]
 then
     mkdir $fsOMP
@@ -115,7 +116,7 @@ fi
 
 # Souce mounten
 # mkdir "$fsOMP"
-mount "/dev/sda2" "$fsOMP"
+mount "$fsSourceRootPartition" "$fsOMP"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
 x=$(echo -e "$nextLoop")
@@ -276,7 +277,7 @@ done <<<"$x"
 # ==================
 
 # /boot mounten...
-mount /dev/sda1 /mnt/root/boot
+mount "$fsSourceBootPartition" /mnt/root/boot
 
 # Mounten der kritischen virtuellen Dateisysteme
 for i in /dev /dev/pts /proc /sys /run; do mount -B $i /mnt/root$i; done
@@ -285,7 +286,7 @@ for i in /dev /dev/pts /proc /sys /run; do mount -B $i /mnt/root$i; done
 chroot /mnt/root
 
 # Reinstall GRUB 2 
-grub-install /dev/sda
+grub-install "$fsSourceBootDrive"
 
 # Recreate the GRUB 2 menu file (grub.cfg)
 update-grub
