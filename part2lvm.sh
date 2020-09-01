@@ -34,7 +34,7 @@ lv_home 20G ext4 /home /mnt/dst/home
 lv_opt 2G ext4 /opt /mnt/dst/opt
 lv_var 5G ext4 /var /mnt/dst/var
 lv_var_log 5G ext4 /var/log /mnt/dst/var/log
-lv_var_tmp 5G ext4 /var/tmp /mnt/dst/var/log
+lv_var_tmp 5G ext4 /var/tmp /mnt/dst/var/tmp
 lv_var_lib_postgresql 40G ext4 /var/lib/postgresql'
 
 #zum testen...
@@ -44,7 +44,7 @@ lv_home 2G ext4 /home /mnt/dst/home
 lv_opt 1G ext4 /opt /mnt/dst/opt
 lv_var 2G ext4 /var /mnt/dst/var
 lv_var_log 2G ext4 /var/log /mnt/dst/var/log
-lv_var_tmp 2G ext4 /var/tmp /mnt/dst/var/log
+lv_var_tmp 2G ext4 /var/tmp /mnt/dst/var/tmp
 lv_var_lib_postgresql 2G ext4 /var/lib/postgresql'
 
 # Variable zur Zeilenweisen Aufbereitung der Ergebnisse aus dem vorhergehenden Loop zur Weiterverarbeitung im nächsten Loop
@@ -107,32 +107,42 @@ fsOMP="/mnt/src"
 
 # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
 # prüfen ob Verzeichnis leer, wenn nicht, leeren...
+echo "IF [ ! -d $fsOMP ] ......................................................"
 if [ ! -d "$fsOMP" ]
 then
+    echo "    MKDIR $fsOMP"
     mkdir $fsOMP
     ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
     # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
     # Script-Abbruch bei Fehler...
+else
+    echo "    Verzeichnis $fsOMP existiert."
 fi 
 
 # Prüfen ob der Mountpoint leer ist
+echo "IF [ -n $(ls -A $fsOMP) ] ..............................................."
 if [ -n "$(ls -A $fsOMP)" ]
 then
     # Alles unterhalb des Mountpoint löschen
+    echo "    FIND $fsOMP -mindepth 1 -delete"
     find $fsOMP -mindepth 1 -delete
     ### ToDo: ggf. Warnung bei Fehler
     # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+else
+    echo "    Verzeichnis $fsOMP ist leer."
 fi
 
 # Souce mounten
-# mkdir "$fsOMP"
+echo "MOUNT $fsSourceRootPartition $fsOMP ....................................."
 mount "$fsSourceRootPartition" "$fsOMP"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
 x=$(echo -e "$nextLoop")
+echo "WHILE READ -r line ......................................................"
 while read -r line 
 do
-    echo " ---> $line"
+    echo " >> $line"
+    echo "....................................................................."
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
@@ -142,26 +152,37 @@ do
     fsMapper=$(echo "$line" | awk '{print $7}')
 
     # Die weiteren Aktionen nur durchführen, wenn kein swap-FS geliefert wird...
+    echo "IF [ $fsType != swap ] .............................................."
     if [ "$fsType" != "swap" ]
     then
-        # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, prüfen ob Verzeichnis leer, wenn nicht, leeren...
+        # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
+        # prüfen ob Verzeichnis leer, wenn nicht, leeren...
+        echo "IF [ ! -d $fsTempMountPoint ] ..................................."
         if [ ! -d "$fsTempMountPoint" ]
         then
+            echo "    MKDIR $fsTempMountPoint"
             mkdir $fsTempMountPoint
             ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
             # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
             # Script-Abbruch bei Fehler...
+        else
+            echo "    $fsTempMountPoint ist vorhanden."
         fi 
 
         # Prüfen ob der Mountpoint leer ist
+        echo "IF [ -n $(ls -A $fsTempMountPoint) ] ............................"
         if [ -n "$(ls -A $fsTempMountPoint)" ]
         then
+            echo "    FIND $fsTempMountPoint -mindepth 1 -delete"
             # Alles unterhalb des Mountpoint löschen
             find $fsTempMountPoint -mindepth 1 -delete
             ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+        else
+            echo "    Verzeichnis ist leer."
         fi
 
         # In Mountpoint mounten
+        echo "MOUNT /dev/$lvmVgName/$lvmLvName $fsTempMountPoint..............."
         mount "/dev/$lvmVgName/$lvmLvName" "$fsTempMountPoint"
 
         fsTgt="$fsMountPoint/" # Nur wenn letztes Zeichen nicht / ist
@@ -171,6 +192,8 @@ do
 
 done <<<"$x"
 
+echo "Taste drücken..."
+read $x
 
 # FSTAB IM NEUEN ROOT ANPASSEN
 # ============================
