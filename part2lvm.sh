@@ -133,6 +133,7 @@ do
     fi
 
     # Hier die aufbereiteten Zeilen hin, Spalten jeweils Leerzeichen-separiert
+    ### ToDo: Leere Variablen mit Dummy-Werten füllen, sonst gibt es probleme bei der Auswertung der Parameter im nächsten Loop!!!
     nextLoop+="$lvmLvName $lvmLvSize $fsType $fsMountPoint $fsTempMountPoint $fsUUID $fsMapper"
 
 
@@ -240,9 +241,19 @@ do
         log "regular" "DEBUG" "mount /dev/$lvmVgName/$lvmLvName $fsTempMountPoint"
         mount "/dev/$lvmVgName/$lvmLvName" "$fsTempMountPoint"
 
-        fsTgt="$fsMountPoint/" # Nur wenn letztes Zeichen nicht / ist
+        ### ToDo: Slash anhängen wenn letztes zeichen kein Slash ist
+        log "regular" "DEBUG" "if [ \${QDIR:(-1)} == / ]"
+        if [ "${fsMountPoint:(-1)}" == "/" ]; then
+            log "regular" "INFO" "Slash am Ende"
+            echo Slash am Ende!
+            fsTgt="$fsMountPoint"
+        else
+            log "regular" "INFO" "Kein Slash am Ende - / anhängen"
+            echo kein slash am ende
+            fsTgt="$fsMountPoint/" # Nur wenn letztes Zeichen nicht / ist
+        fi
     
-        log "regular" "DEBUG" "fsMountPoint: ................ $fsMountPoint"
+        log "regular" "DEBUG" "fsTgt: ........................ $fsTgt"
     
         # Dateien vom source ins neue Filesystem kopieren
         log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsOMP$fsTgt* $fsTempMountPoint"
