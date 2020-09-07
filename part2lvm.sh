@@ -119,8 +119,8 @@ do
     fsUUID=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\"')
     log "regular" "DEBUG" "fsUUID: ...................... $fsUUID"
     # Dateisysteme ausgeben, Mapper ermitteln
-    log "regular" "DEBUG" "fsMapper=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \/dev\/mapper\/[0-9a-zA-Z\-\_]*)"
-    fsMapper=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-zA-Z\-\_]*')
+    log "regular" "DEBUG" "fsMapper=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \/dev\/mapper\/[0-9a-zA-Z\_\-]*)"
+    fsMapper=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-zA-Z\_\-]*')
     log "regular" "DEBUG" "fsMapper: .................... $fsMapper"
 
     
