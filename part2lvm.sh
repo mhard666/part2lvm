@@ -38,12 +38,12 @@ fsSourceBootPartition="/dev/sda1"
 
 # Physical Volume auf der neuen Partition (sda3) anlegen
 lvmPvDevice="/dev/sda3"
-log "regular" "INFO" "pvcreate $lvmPvDevice"
+log "regular" "DEBUG" "pvcreate $lvmPvDevice"
 pvcreate $lvmPvDevice
 
 # Volume Group im Physical Volume anlegen
 lvmVgName="vg_debian"
-log "regular" "INFO" "vgcreate $lvmVgName $lvmPvDevice"
+log "regular" "DEBUG" "vgcreate $lvmVgName $lvmPvDevice"
 vgcreate $lvmVgName $lvmPvDevice
 
 # Logical Volumes anlegen
@@ -73,37 +73,37 @@ nextLoop=""
 log "regular" "INFO" "### Start Loop1..."
 while read -r line
 do 
-    log "regular" "INFO" "read -r $line"
+    log "regular" "DEBUG" "read -r $line"
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
     fsMountPoint=$(echo "$line" | awk '{print $4}')
     fsTempMountPoint=$(echo "$line" | awk '{print $5}')
 
-    log "regular" "DEBUG" "lvmLvName:        $lvmLvName"
-    log "regular" "DEBUG" "lvmLvSize:        $lvmLvSize"
-    log "regular" "DEBUG" "fsType:           $fsType"
-    log "regular" "DEBUG" "fsMountPoint:     $fsMountPoint"
-    log "regular" "DEBUG" "fsTempMountPoint: $fsTempMountPoint"
+    log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
+    log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
+    log "regular" "DEBUG" "fsType: ...................... $fsType"
+    log "regular" "DEBUG" "fsMountPoint: ................ $fsMountPoint"
+    log "regular" "DEBUG" "fsTempMountPoint: ............ $fsTempMountPoint"
 
     # Erstellen des Logical Volumes...
-    log "regular" "INFO" "lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName"
+    log "regular" "DEBUG" "lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName"
     lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName
 
     # Dateisysteme anlegen...
-    log "regular" "INFO" "if [ $fsType == ext4 ]"
+    log "regular" "DEBUG" "if [ $fsType == ext4 ]"
     if [ "$fsType" == "ext4" ]
     then
+        log "regular" "INFO" "Filesystem ist ext4"
         # Dateisysteme auf den LVs anlegen
-        log "regular" "INFO" "mkfs.ext4 /dev/$lvmVgName/$lvmLvName"
+        log "regular" "DEBUG" "mkfs.ext4 /dev/$lvmVgName/$lvmLvName"
         mkfs.ext4 "/dev/$lvmVgName/$lvmLvName"
-    log "regular" "INFO" "elif [ $fsType == swap ]"
     elif [ "$fsType" == "swap" ]
     then
+        log "regular" "INFO" "Filesystem ist swap"
         # Swap Filesystem anlegen
-        log "regular" "INFO" "mkswap /dev/$lvmVgName/$lvmLvName"
+        log "regular" "DEBUG" "mkswap /dev/$lvmVgName/$lvmLvName"
         mkswap "/dev/$lvmVgName/$lvmLvName"
-    log "regular" "INFO" "else"
     else
         # nicht unterstützt - Fehler
         log "regular" "INFO" "Kein unterstütztes Filesystem - übersprungen"
@@ -111,11 +111,17 @@ do
     fi
 
     # Dateisysteme ausgeben, UUID ermitteln
-    log "regular" "INFO" "fsUUID=$(blkid | grep -i \-$lvmLvName: | grep -o -E \"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\")"
+    log "regular" "INFO" "fsUUID=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\")"
+    dummy=$(blkid)
+    log "regular" "DEBUG" "dummy: ....................... $dummy"
+    dummy=$(blkid | grep -i "\-$lvmLvName:")
+    log "regular" "DEBUG" "dummy: ....................... $dummy"
     fsUUID=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\"')
+    log "regular" "DEBUG" "fsUUID: ...................... $fsUUID"
     # Dateisysteme ausgeben, Mapper ermitteln
-    log "regular" "INFO" "fsMapper=$(blkid | grep -i \-$lvmLvName: | grep -o -E \/dev\/mapper\/[0-9a-z\-]*)"
+    log "regular" "INFO" "fsMapper=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \/dev\/mapper\/[0-9a-z\-]*)"
     fsMapper=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-z\-]*')
+    log "regular" "DEBUG" "fsMapper: .................... $fsMapper"
 
     
     # ERGEBISSE FÜR NÄCHSTE SCHLEIFE AUFARBEITEN
@@ -131,7 +137,7 @@ do
 
 
 done <<<"$lvmLogicalVolumeData"
-log "regular" "DEBUG" "### End Loop1..."
+log "regular" "INFO" "### End Loop1..."
 
 
 # NÄCHSTER LOOP: Neues Filesystem mounten und altes dahin syncen
@@ -142,10 +148,11 @@ fsOMP="/mnt/src"
 
 # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
 # prüfen ob Verzeichnis leer, wenn nicht, leeren...
-log "regular" "INFO" "if [ ! -d $fsOMP ]"
+log "regular" "DEBUG" "if [ ! -d $fsOMP ]"
 if [ ! -d "$fsOMP" ]
 then
-    log "regular" "INFO" "mkdir $fsOMP"
+    log "regular" "INFO" "Mountverzeichnis $fsOMP existiert nicht"
+    log "regular" "DEBUG" "mkdir $fsOMP"
     mkdir "$fsOMP"
     ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
     # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
@@ -155,11 +162,12 @@ else
 fi 
 
 # Prüfen ob der Mountpoint leer ist
-log "regular" "INFO" "if [ -n $(ls -A $fsOMP) ]"
+log "regular" "DEBUG" "if [ -n $(ls -A $fsOMP) ]"
 if [ -n "$(ls -A $fsOMP)" ]
 then
+    log "regular" "INFO" "Mountverzeichnis $fsOMP ist nicht leer - löschen"
     # Alles unterhalb des Mountpoint löschen
-    log "regular" "INFO" "find $fsOMP -mindepth 1 -delete"
+    log "regular" "DEBUG" "find $fsOMP -mindepth 1 -delete"
     find "$fsOMP" -mindepth 1 -delete
     ### ToDo: ggf. Warnung bei Fehler
     # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
@@ -168,7 +176,7 @@ else
 fi
 
 # Souce mounten
-log "regular" "INFO" "mount $fsSourceRootPartition $fsOMP"
+log "regular" "DEBUG" "mount $fsSourceRootPartition $fsOMP"
 mount "$fsSourceRootPartition" "$fsOMP"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
@@ -177,7 +185,7 @@ x=$(echo -e "$nextLoop")
 log "regular" "INFO" "### Start Loop2..."
 while read -r line 
 do
-    log "regular" "DEBUG" "line:             $line"
+    log "regular" "DEBUG" "line: ........................ $line"
 
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
@@ -187,24 +195,26 @@ do
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
-    log "regular" "DEBUG" "lvmLvName:        $lvmLvName"
-    log "regular" "DEBUG" "lvmLvSize:        $lvmLvSize"
-    log "regular" "DEBUG" "fsType:           $fsType"
-    log "regular" "DEBUG" "fsMountPoint:     $fsMountPoint"
-    log "regular" "DEBUG" "fsTempMountPoint: $fsTempMountPoint"
-    log "regular" "DEBUG" "fsUUID:           $fsUUID"
-    log "regular" "DEBUG" "fsMapper:         $fsMapper"
+    log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
+    log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
+    log "regular" "DEBUG" "fsType: ...................... $fsType"
+    log "regular" "DEBUG" "fsMountPoint: ................ $fsMountPoint"
+    log "regular" "DEBUG" "fsTempMountPoint: ............ $fsTempMountPoint"
+    log "regular" "DEBUG" "fsUUID: ...................... $fsUUID"
+    log "regular" "DEBUG" "fsMapper: .................... $fsMapper"
 
     # Die weiteren Aktionen nur durchführen, wenn kein swap-FS geliefert wird...
-    log "regular" "INFO" "if [ $fsType != swap ]"
+    log "regular" "DEBUG" "if [ $fsType != swap ]"
     if [ "$fsType" != "swap" ]
     then
+        log "regular" "INFO" "Filesystem ist kein swap-FS"
         # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
         # prüfen ob Verzeichnis leer, wenn nicht, leeren...
-        log "regular" "INFO" "if [ ! -d $fsTempMountPoint ]"
+        log "regular" "DEBUG" "if [ ! -d $fsTempMountPoint ]"
         if [ ! -d "$fsTempMountPoint" ]
         then
-            log "regular" "INFO" "mkdir $fsTempMountPoint"
+            log "regular" "INFO" "Temporärer Mountpoint $fsTempMountPoint existiert nicht - Verzeichnis anlegen"
+            log "regular" "DEBUG" "mkdir $fsTempMountPoint"
             mkdir $fsTempMountPoint
             ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
             # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
@@ -214,11 +224,12 @@ do
         fi 
 
         # Prüfen ob der Mountpoint leer ist
-        log "regular" "INFO" "if [ -n $(ls -A $fsTempMountPoint) ]"
+        log "regular" "DEBUG" "if [ -n $(ls -A $fsTempMountPoint) ]"
         if [ -n "$(ls -A $fsTempMountPoint)" ]
         then
+            log "regular" "INFO" "Mountpoint $fsTempMountPoint enthält Daten - löschen"
             # Alles unterhalb des Mountpoint löschen
-            log "regular" "INFO" "find $fsTempMountPoint -mindepth 1 -delete"
+            log "regular" "DEBUG" "find $fsTempMountPoint -mindepth 1 -delete"
             find $fsTempMountPoint -mindepth 1 -delete
             ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
         else
@@ -226,20 +237,20 @@ do
         fi
 
         # In Mountpoint mounten
-        log "regular" "INFO" "mount /dev/$lvmVgName/$lvmLvName $fsTempMountPoint"
+        log "regular" "DEBUG" "mount /dev/$lvmVgName/$lvmLvName $fsTempMountPoint"
         mount "/dev/$lvmVgName/$lvmLvName" "$fsTempMountPoint"
 
         fsTgt="$fsMountPoint/" # Nur wenn letztes Zeichen nicht / ist
     
-        log "regular" "DEBUG" "fsMountPoint:     $fsMountPoint"
+        log "regular" "DEBUG" "fsMountPoint: ................ $fsMountPoint"
     
         # Dateien vom source ins neue Filesystem kopieren
-        log "regular" "INFO" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsOMP$fsTgt* $fsTempMountPoint"
+        log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsOMP$fsTgt* $fsTempMountPoint"
         rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
     fi
 
 done <<<"$x"
-log "regular" "DEBUG" "### End Loop2..."
+log "regular" "INFO" "### End Loop2..."
 
 echo "Taste drücken..."
 read $x
@@ -251,14 +262,15 @@ read $x
 # prüfen, ob ein /boot Eintrag existiert - wenn nicht, evtl. abbruch
 row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' /etc/fstab)
 
-log "regular" "DEBUG" "row:              $row"
+log "regular" "DEBUG" "row: ......................... $row"
 
 # prüfen ob row != "", sonst ist keine extra boot Partition vorhanden, was ggf die einrichtung des Bootloaders verkompliziert...
-log "regular" "INFO" "if [ $row == \"\" ]"
+log "regular" "DEBUG" "if [ $row == \"\" ]"
 if [ "$row" == "" ]
 then
+    log "regular" "INFO" "row = leer - kein Eintrag für eine Bootpartition vorhanden"
     # Abfrage mit option zu beenden...
-    log "regular" "WARN" "Keine Root Partiton gefunden"
+    log "regular" "WARN" "Keine boot Partiton gefunden"
     echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
     read $x
     ### ToDo: Abfrage...
@@ -270,12 +282,13 @@ row=""
 # alten root-Eintrag ermitteln.
 row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' /etc/fstab)
 
-log "regular" "DEBUG" "row:              $row"
+log "regular" "DEBUG" "row: ......................... $row"
 
 # Prüfen ob $row != "" (Wenn $row != "" ist eine root-Partition vorhanden...)
-log "regular" "INFO" "if [ $row != \"\" ]"
+log "regular" "DEBUG" "if [ $row != \"\" ]"
 if [ "$row" != "" ]
 then
+    log "regular" "INFO" "Es wurde ein Eintrag für eine root-Partition gefunden"
     # Ergebnis in $row zerlegen in den Zeilentext...
     oldRoot=$(echo $row | awk -F':' '{print $2}')
     # ...und die Zeilennummer
@@ -285,7 +298,9 @@ then
     sed "$oldRootLine c \
     # $oldRoot" /etc/fstab
 else
+    log "regular" "INFO" "Es wurde kein Eintrag für eine root-Partition gefunden"
     # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
+    log "regular" "ERROR" "Kein Eintrag für root-Filesystem in /etc/fstab gefunden. Script wird beendet."
     echo "FEHLER: Kein root-Filesystem-Eintrag in /etc/fstab gefunden. Das Script wird abgebrochen."
     Exit 2
 fi
