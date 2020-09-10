@@ -263,6 +263,8 @@ do
         fsTgtPath="$fsOMP$fsTgt*"
         log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
 
+        
+        ### ToDo: vorher prüfen, ob Quelle existiert, sonst rsync überspringen
         # Dateien vom source ins neue Filesystem kopieren
         log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
         # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
@@ -279,8 +281,13 @@ read $x
 # FSTAB IM NEUEN ROOT ANPASSEN
 # ============================
 
+### ToDo: richtige fstab wählen (/mnt/dst/etc/fstab)
+fstab="$fsTempMountPoint/etc/fstab"
+
+log "regular" "DEBUG" "fstab: ....................... $fstab"
+
 # prüfen, ob ein /boot Eintrag existiert - wenn nicht, evtl. abbruch
-row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' /etc/fstab)
+row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' $fstab)
 
 log "regular" "DEBUG" "row: ......................... $row"
 
@@ -300,7 +307,7 @@ fi
 row=""
 
 # alten root-Eintrag ermitteln.
-row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' /etc/fstab)
+row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' $fstab)
 
 log "regular" "DEBUG" "row: ......................... $row"
 
@@ -316,13 +323,13 @@ then
 
     # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
     sed "$oldRootLine c \
-    # $oldRoot" /etc/fstab
+    # $oldRoot" $fstab
 else
     log "regular" "INFO" "Es wurde kein Eintrag für eine root-Partition gefunden"
     # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
-    log "regular" "ERROR" "Kein Eintrag für root-Filesystem in /etc/fstab gefunden. Script wird beendet."
-    echo "FEHLER: Kein root-Filesystem-Eintrag in /etc/fstab gefunden. Das Script wird abgebrochen."
-    Exit 2
+    log "regular" "ERROR" "Kein Eintrag für root-Filesystem in $fstab gefunden. Script wird beendet."
+    echo "FEHLER: Kein root-Filesystem-Eintrag in $fstab gefunden. Das Script wird abgebrochen."
+    exit 2
 fi
 
 
