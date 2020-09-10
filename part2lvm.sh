@@ -33,6 +33,9 @@ fsSourceBootDrive="/dev/sda"
 fsSourceRootPartition="/dev/sda2"
 fsSourceBootPartition="/dev/sda1"
 
+mntSrc="/mnt/src"               # Mountpoint Quelle
+mntDst="/mnt/dst"               # Mountpoint Ziel
+
 # LVM AUF DER NEUEN PARTITION EINRICHTEN
 # ======================================
 
@@ -55,7 +58,7 @@ lv_opt 2G ext4 /opt /mnt/dst/opt
 lv_var 5G ext4 /var /mnt/dst/var
 lv_var_log 5G ext4 /var/log /mnt/dst/var/log
 lv_var_tmp 5G ext4 /var/tmp /mnt/dst/var/tmp
-lv_var_lib_postgresql 40G ext4 /var/lib/postgresql'
+lv_var_lib_postgresql 40G ext4 /var/lib/postgresql /mnt/dst/var/lib/postgresql'
 
 #zum testen...
 lvmLogicalVolumeData='lv_root 3G ext4 / /mnt/dst
@@ -65,7 +68,7 @@ lv_opt 1G ext4 /opt /mnt/dst/opt
 lv_var 2G ext4 /var /mnt/dst/var
 lv_var_log 2G ext4 /var/log /mnt/dst/var/log
 lv_var_tmp 2G ext4 /var/tmp /mnt/dst/var/tmp
-lv_var_lib_postgresql 2G ext4 /var/lib/postgresql'
+lv_var_lib_postgresql 2G ext4 /var/lib/postgresql /mnt/dst/var/lib/postgresql'
 
 # Variable zur Zeilenweisen Aufbereitung der Ergebnisse aus dem vorhergehenden Loop zur Weiterverarbeitung im nächsten Loop
 nextLoop=""
@@ -78,7 +81,8 @@ do
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
     fsMountPoint=$(echo "$line" | awk '{print $4}')
-    fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    # fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    fsTempMountPoint="$mntDst$fsMountPoint"
 
     log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
     log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
@@ -144,8 +148,9 @@ log "regular" "INFO" "### End Loop1..."
 # NÄCHSTER LOOP: Neues Filesystem mounten und altes dahin syncen
 # ==============================================================
 
+### ToDo: fsOMP ersetzen durch mntSrc
 # MountPoint für QuellFileSystem
-fsOMP="/mnt/src"
+fsOMP="$mntSrc"
 
 # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
 # prüfen ob Verzeichnis leer, wenn nicht, leeren...
@@ -192,7 +197,8 @@ do
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
     fsMountPoint=$(echo "$line" | awk '{print $4}')
-    fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    # fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    fsTempMountPoint="$mntSrc$fsMountPoint"
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
@@ -247,10 +253,12 @@ do
             log "regular" "INFO" "Slash am Ende"
             echo Slash am Ende!
             fsTgt="$fsMountPoint"
+            ### ToDo: Slash am Ende entfernen
         else
             log "regular" "INFO" "Kein Slash am Ende - / anhängen"
             echo kein slash am ende
             fsTgt="$fsMountPoint/" # Nur wenn letztes Zeichen nicht / ist
+            ### ToDo: fsTgt ohne Slash am Ende
         fi
     
         log "regular" "DEBUG" "fsTgt: ........................ $fsTgt"
@@ -261,6 +269,7 @@ do
         
         # Zielpfad im alten Mountpoint zusammensetzen...
         fsTgtPath="$fsOMP$fsTgt*"
+        ### ToDo: .../* Slash vor *
         log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
 
         
@@ -282,7 +291,7 @@ read $x
 # ============================
 
 ### ToDo: richtige fstab wählen (/mnt/dst/etc/fstab)
-fstab="$fsTempMountPoint/etc/fstab"
+fstab="$mntDst/etc/fstab"
 
 log "regular" "DEBUG" "fstab: ....................... $fstab"
 
@@ -395,14 +404,14 @@ do
     then
         # neue UID der root part anfügen
         sed "$oldRootLine a \
-            $fsTabLine" /etc/fstab
+            $fsTabLine" $fstab
     # sonst ist es keine root-Partition - dann am Ende der Datei einfügen...
     else
         # Anzahl Zeilen ermitteln = letzte Zeile
-        lastRowLine=$(cat /etc/fstab | wc -l)
+        lastRowLine=$(cat $fstab | wc -l)
         # neue UID der xxx part anfügen
         sed "$lastRowLine a \
-            $fsTabLine" /etc/fstab
+            $fsTabLine" $fstab
     fi
 done <<<"$x"
 
