@@ -254,10 +254,19 @@ do
         fi
     
         log "regular" "DEBUG" "fsTgt: ........................ $fsTgt"
-    
+
+        # mal schauen, was gemounted wird...
+        mnt=$(mount)
+        log "regular" "DEBUG" "mnt: .......................... $mnt"
+        
+        # Zielpfad im alten Mountpoint zusammensetzen...
+        fsTgtPath=$fsOMP$fsTgt
+        log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
+
         # Dateien vom source ins neue Filesystem kopieren
-        log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsOMP$fsTgt* $fsTempMountPoint"
-        rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
+        log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
+        # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
+        rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsTgtPath*" "$fsTempMountPoint"
     fi
 
 done <<<"$x"
