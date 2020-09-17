@@ -1,6 +1,11 @@
 #!/bin/bash
 #IFS=$'\n' 
 
+function test {
+    echo "--"
+    return 1
+}
+
 var='lv_root 10G ext4 /mnt/new
 lv_swap 16G swap
 lv_home 20G ext4
@@ -48,3 +53,13 @@ while read -r line
 do
     echo " ---> $line"
 done <<<"$x"
+
+test "x"
+r=$?
+if [ $r -eq 0 ]; then
+    echo "true"
+elif [ $r -eq 1 ]; then
+    echo "1"
+else
+    echo "false"
+fi
