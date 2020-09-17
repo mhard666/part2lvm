@@ -6,6 +6,14 @@
 #
 # Author: Mirko Härtwig
 
+# Check if script is running as root...
+SYSTEM_USER_NAME=$(id -un)
+if [[ "${SYSTEM_USER_NAME}" != 'root'  ]]
+then
+    echo 'You are running the script not as root'
+    exit 1
+fi
+
 # Logging einbinden...
 LOGLEVEL="0"
 ENABLE_LOG="1"
@@ -22,10 +30,105 @@ else
     exit 1;
 fi
 
-log "regular" "INFO" "Script $0 gestartet."
+# =========================================================
+# Funktion:  pathExistsOrCreate()
+# Aufgabe:   Prüft ob Verzeichnis existiert und legt es
+#            ggf. neu an.
+# Parameter: $1 zu prüfender Pfad
+# Return:    0: wenn Verzeichnis existiert oder erfolg-
+#               reich angelegt wurde
+#            1: wenn Verzeichnis nicht existiert und 
+#               nicht angelegt werden konnte
+#            2: wenn kein Parameter angegeben wurde
+# =========================================================
+function pathExistsOrCreate() {
+    # Parameter prüfen
+    if [ $# -lt 1 ]
+    then
+        echo "usage: $0 PATH"
+        return 2    # Returncode 2 = Fehler, Übergabeparameter
+    fi
 
-# Dieses Script muss als root ausgeführt werden!
-## ToDo: Auf root testen...
+    # Übergabeparameter abholen
+    pEOCPath=1$
+
+    # Prüfen ob Verzeichnis existiert...
+    log "regular" "DEBUG" "if [ ! -d $pEOCPath ]"
+    if [ -d "$pEOCPath" ]
+    then
+        # Ja - alles ok.
+        log "regular" "INFO" "Verzeichnis $pEOCPath existiert."
+        return 0    # Returncode 0 = Ok
+    else
+        # Nein - Verzeichnis anlegen...
+        log "regular" "INFO" "Verzeichnis $pEOCPath existiert nicht - erstellen."
+        log "regular" "DEBUG" "mkdir $pEOCPath"
+        mkdir "$pEOCPath"
+        # Nochmal prüfen ob Verzeichnis jetzt existiert...
+        if [ -d "$pEOCPath" ]
+        then
+            # Ja - alles ok
+            log "regular" "INFO" "Verzeichnis $pEOCPath existiert."
+            return 0    # Returncode 0 = Ok
+        else
+            # Nein - nicht gut - $false zurückgeben
+            log "regular" "INFO" "Verzeichnis $pEOCPath konnte nicht erstellt werden"
+            return 1    # Returncode 1 = Fehler, Verzeichnis nicht vorhanden
+        fi 
+    fi 
+}
+
+
+# =========================================================
+# Funktion:  pathEmptyOrDelContent()
+# Aufgabe:   Prüft ob Verzeichnis leer ist und löscht ggf.
+#            den Inhalt, falls es nicht leer ist.
+# Parameter: $1 zu prüfender Pfad
+# Return:    0: wenn Verzeichnis leer ist oder erfolg-
+#               reich geleert wurde
+#            1: wenn Verzeichnis nicht vollständig 
+#               geleert werden konnte
+#            2: wenn kein Parameter übergeben wurde
+# =========================================================
+function pathEmptyOrDelContent() {
+    # Parameter prüfen
+    if [ $# -lt 1 ]
+    then
+        echo "usage: $0 PATH"
+        return 2    # Returncode 2 = Fehler, Übergabeparameter
+    fi
+
+    # Übergabeparameter abholen
+    pEODCPath=$1
+
+    #Prüfen, ob das Verzeichnis Dateien/Ordner enthält...
+    log "regular" "DEBUG" "if [ -n $(ls -A $pEODCPath) ]"
+    if [ -n "$(ls -A $pEODCPath)" ]
+    then
+        # Ja - Verzeichnis ist nicht leer - Inhalte löschen...
+        log "regular" "INFO" "Mountverzeichnis $pEODCPath ist nicht leer - löschen"
+        # Alles unterhalb des Mountpoint löschen
+        log "regular" "DEBUG" "find $pEODCPath -mindepth 1 -delete"
+        find "$pEODCPath" -mindepth 1 -delete
+
+        # Nochmal prüfen, ob das Verzeichnis jetzt immernoch Dateien/Ordner enthält...
+        if [ -n "$(ls -A $pEODCPath)" ]
+        then
+            # Ja - Verzeichnis ist immernoch nicht leer - return $false
+            log "regular" "INFO" "Verzeichnis $pEODCPath konnte nicht geleert werden."
+            return 1    # Returncode 1 = Fehler, Pfad nicht leer
+        else
+            # Nein - Verzeichnis ist leer.
+            log "regular" "INFO" "Inhalt von Verzeichnis $pEODCPath wurde erfolgreich gelöscht."
+            return 0    # Returncode 0 = Ok
+    else
+        # Nein - Verzeichnis ist leer.
+        log "regular" "INFO" "Verzeichnis $pEODCPath ist leer."
+        return 0    # Returncode 0 = Ok
+    fi
+}
+
+log "regular" "INFO" "Script $0 gestartet."
 
 # Variablen...
 fsSourceRootDrive="/dev/sda"
@@ -36,8 +139,8 @@ fsSourceBootPartition="/dev/sda1"
 mntSrc="/mnt/src"               # Mountpoint Quelle
 mntDst="/mnt/dst"               # Mountpoint Ziel
 
-# LVM AUF DER NEUEN PARTITION EINRICHTEN
-# ======================================
+# STEP 1: LVM AUF DER NEUEN PARTITION EINRICHTEN
+# ==============================================
 
 # Physical Volume auf der neuen Partition (sda3) anlegen
 lvmPvDevice="/dev/sda3"
@@ -51,6 +154,7 @@ vgcreate $lvmVgName $lvmPvDevice
 
 # Logical Volumes anlegen
 # lvmLvName lvmLvSize fsType fsMountPoint fsTempMountPoint
+### ToDo: fsTempMountPoint rausnehmen
 lvmLogicalVolumeData='lv_root 10G ext4 / /mnt/dst
 lv_swap 16G swap
 lv_home 20G ext4 /home /mnt/dst/home
@@ -138,6 +242,7 @@ do
 
     # Hier die aufbereiteten Zeilen hin, Spalten jeweils Leerzeichen-separiert
     ### ToDo: Leere Variablen mit Dummy-Werten füllen, sonst gibt es probleme bei der Auswertung der Parameter im nächsten Loop!!!
+    ### ToDo: fsTempMountPoint rausnehmen
     nextLoop+="$lvmLvName $lvmLvSize $fsType $fsMountPoint $fsTempMountPoint $fsUUID $fsMapper"
 
 
@@ -155,31 +260,63 @@ fsOMP="$mntSrc"
 # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
 # prüfen ob Verzeichnis leer, wenn nicht, leeren...
 log "regular" "DEBUG" "if [ ! -d $fsOMP ]"
-if [ ! -d "$fsOMP" ]
-then
-    log "regular" "INFO" "Mountverzeichnis $fsOMP existiert nicht"
-    log "regular" "DEBUG" "mkdir $fsOMP"
-    mkdir "$fsOMP"
-    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
-    # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
-    # Script-Abbruch bei Fehler...
+##if [ ! -d "$fsOMP" ]
+##then
+##    log "regular" "INFO" "Mountverzeichnis $fsOMP existiert nicht"
+##    log "regular" "DEBUG" "mkdir $fsOMP"
+##    mkdir "$fsOMP"
+##    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
+##    # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
+##    # Script-Abbruch bei Fehler...
+##else
+##    log "regular" "INFO" "Verzeichnis $fsOMP existiert."
+##fi 
+
+pathExistsOrCreate $fsOMP
+result=$?
+if [ $result -eq 0 ]; then
+    # Rückgabewert 0 - Verzeichnis existiert
+    echo "0 - OK"
+elif [ $result -eq 1 ]; then
+    # Rückgabewert 1 - Verzeichnis existiert nicht - Abbruch
+    echo "1 - Fehler"
+    exit
 else
-    log "regular" "INFO" "Verzeichnis $fsOMP existiert."
-fi 
+    # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe
+    echo "2+ - Abbruch"
+    exit 
+fi
 
 # Prüfen ob der Mountpoint leer ist
+### ToDo: in Funktion auslagern
 log "regular" "DEBUG" "if [ -n $(ls -A $fsOMP) ]"
-if [ -n "$(ls -A $fsOMP)" ]
-then
-    log "regular" "INFO" "Mountverzeichnis $fsOMP ist nicht leer - löschen"
-    # Alles unterhalb des Mountpoint löschen
-    log "regular" "DEBUG" "find $fsOMP -mindepth 1 -delete"
-    find "$fsOMP" -mindepth 1 -delete
-    ### ToDo: ggf. Warnung bei Fehler
-    # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+##if [ -n "$(ls -A $fsOMP)" ]
+##then
+##    log "regular" "INFO" "Mountverzeichnis $fsOMP ist nicht leer - löschen"
+##    # Alles unterhalb des Mountpoint löschen
+##    log "regular" "DEBUG" "find $fsOMP -mindepth 1 -delete"
+##    find "$fsOMP" -mindepth 1 -delete
+##    ### ToDo: ggf. Warnung bei Fehler
+##    # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+##else
+##    log "regular" "INFO" "Verzeichnis $fsOMP ist leer."
+##fi
+
+pathEmptyOrDelContent $fsOMP
+result=$?
+if [ $result -eq 0 ]; then
+    # Rückgabewert 0 - Verzeichnis ist leer
+    echo "0"
+elif [ $result -eq 1 ]; then
+    # Rückgabewert 1 - Verzeichnis ist nicht leer - Warnung mit Option zum Abbruch
+    echo "1"
+    ### ToDo: Abfrage Abbruch/Weiter?
 else
-    log "regular" "INFO" "Verzeichnis $fsOMP ist leer."
+    # Rückgabewert 2 und höher - Fehler bei Parameterübergabe - Abbruch
+    echo "2"
+    exit
 fi
+
 
 # Souce mounten
 log "regular" "DEBUG" "mount $fsSourceRootPartition $fsOMP"
@@ -198,7 +335,7 @@ do
     fsType=$(echo "$line" | awk '{print $3}')
     fsMountPoint=$(echo "$line" | awk '{print $4}')
     # fsTempMountPoint=$(echo "$line" | awk '{print $5}')
-    fsTempMountPoint="$mntSrc$fsMountPoint"
+    fsTempMountPoint="$mntDst$fsMountPoint"
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
@@ -215,39 +352,68 @@ do
     if [ "$fsType" != "swap" ]
     then
         log "regular" "INFO" "Filesystem ist kein swap-FS"
+        
         # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
-        # prüfen ob Verzeichnis leer, wenn nicht, leeren...
         log "regular" "DEBUG" "if [ ! -d $fsTempMountPoint ]"
-        if [ ! -d "$fsTempMountPoint" ]
-        then
-            log "regular" "INFO" "Temporärer Mountpoint $fsTempMountPoint existiert nicht - Verzeichnis anlegen"
-            log "regular" "DEBUG" "mkdir $fsTempMountPoint"
-            mkdir $fsTempMountPoint
-            ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
-            # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
-            # Script-Abbruch bei Fehler...
+        ##if [ ! -d "$fsTempMountPoint" ]
+        ##then
+        ##    log "regular" "INFO" "Temporärer Mountpoint $fsTempMountPoint existiert nicht - Verzeichnis anlegen"
+        ##    log "regular" "DEBUG" "mkdir $fsTempMountPoint"
+        ##    mkdir $fsTempMountPoint
+        ##    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
+        ##    # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
+        ##    # Script-Abbruch bei Fehler...
+        ##else
+        ##    log "regular" "INFO" "$fsTempMountPoint ist vorhanden."
+        ##fi 
+
+        pathExistsOrCreate $fsTempMountPoint
+        result=$?
+        if [ $result -eq 0 ]; then
+            # Rückgabewert 0 - Ok
+            echo "true"
+        elif [ $result -eq 1 ]; then
+            # Rückgabewert 1 - Fehler, Pfad ist nicht vorhanden - Abbruch
+            echo "1"
+            exit
         else
-            log "regular" "INFO" "$fsTempMountPoint ist vorhanden."
-        fi 
+            # Rückgabewert 2 und höher - Fehler bei der Parameterübergabe
+            echo "2"
+            exit
+        fi
 
         # Prüfen ob der Mountpoint leer ist
         log "regular" "DEBUG" "if [ -n $(ls -A $fsTempMountPoint) ]"
-        if [ -n "$(ls -A $fsTempMountPoint)" ]
-        then
-            log "regular" "INFO" "Mountpoint $fsTempMountPoint enthält Daten - löschen"
-            # Alles unterhalb des Mountpoint löschen
-            log "regular" "DEBUG" "find $fsTempMountPoint -mindepth 1 -delete"
-            find $fsTempMountPoint -mindepth 1 -delete
-            ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+        ##if [ -n "$(ls -A $fsTempMountPoint)" ]
+        ##then
+        ##    log "regular" "INFO" "Mountpoint $fsTempMountPoint enthält Daten - löschen"
+        ##    # Alles unterhalb des Mountpoint löschen
+        ##    log "regular" "DEBUG" "find $fsTempMountPoint -mindepth 1 -delete"
+        ##    find $fsTempMountPoint -mindepth 1 -delete
+        ##    ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
+        ##else
+        ##    log "regular" "INFO" "Verzeichnis ist leer."
+        ##fi
+
+        pathEmptyOrDelContent $fsTempMountPoint
+        result=$?
+        if [ $result -eq 0 ]; then
+            # Rückgabewert 0 - Ok
+            echo "0"
+        elif [ $result -eq 1 ]; then
+            # Rückgabewert 1 - Fehler, Verzeichnis nicht leer - Abfrage Abbruch/Weiter
+            echo "1"
+            ### ToDo: Abfrage bei Fehler ob weiter oder Abbruch
         else
-            log "regular" "INFO" "Verzeichnis ist leer."
+            # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe - Abbruch
+            echo "2+"
+            exit
         fi
 
         # In Mountpoint mounten
         log "regular" "DEBUG" "mount /dev/$lvmVgName/$lvmLvName $fsTempMountPoint"
         mount "/dev/$lvmVgName/$lvmLvName" "$fsTempMountPoint"
 
-        ### ToDo: Slash anhängen wenn letztes zeichen kein Slash ist
         log "regular" "DEBUG" "if [ \${QDIR:(-1)} == / ]"
         if [ "${fsMountPoint:(-1)}" == "/" ]; then
             log "regular" "INFO" "Slash am Ende"
@@ -290,7 +456,6 @@ read $x
 # FSTAB IM NEUEN ROOT ANPASSEN
 # ============================
 
-### ToDo: richtige fstab wählen (/mnt/dst/etc/fstab)
 fstab="$mntDst/etc/fstab"
 
 log "regular" "DEBUG" "fstab: ....................... $fstab"
@@ -353,7 +518,8 @@ do
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
     fsMountPoint=$(echo "$line" | awk '{print $4}')
-    fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    # fsTempMountPoint=$(echo "$line" | awk '{print $5}')
+    fsTempMountPoint="$mntDst$fsMountPoint"
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
