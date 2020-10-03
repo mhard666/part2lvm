@@ -309,13 +309,13 @@ do
     # ERGEBISSE FÜR NÄCHSTE SCHLEIFE AUFARBEITEN
 
     # leere Variablen mit Dummy-Wert füllen
-    fillEmptyVars "$lvmLvName" "$filler"
-    fillEmptyVars "$lvmLvSize" "$filler"
-    fillEmptyVars "$fsType" "$filler"
-    fillEmptyVars "$fsMountPoint" "$filler"
-    fillEmptyVars "$fsTempMountPoint" "$filler"
-    fillEmptyVars "$fsUUID" "$filler"
-    fillEmptyVars "$fsMapper" "$filler"
+    lvmLvName=$(fillEmptyVars "$lvmLvName" "$filler")
+    lvmLvSize=$(fillEmptyVars "$lvmLvSize" "$filler")
+    fsType=$(fillEmptyVars "$fsType" "$filler")
+    fsMountPoint=$(fillEmptyVars "$fsMountPoint" "$filler")
+    fsTempMountPoint=$(fillEmptyVars "$fsTempMountPoint" "$filler")
+    fsUUID=$(fillEmptyVars "$fsUUID" "$filler")
+    fsMapper=$(fillEmptyVars "$fsMapper" "$filler")
 
     # Wenn nextLoop nicht leer ist erstmal einen Zeilenumbruch dranhängen...
     if [ "$nextLoop" != "" ] 
@@ -382,12 +382,13 @@ do
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
-    lvmLvName=$(stripEmptyVars("$lvmLvName", "$filler"))  # reconvert in leeren String wenn erforderlich
-    lvmLvSize=$(stripEmptyVars("$lvmLvSize", "$filler"))
-    fsType=$(stripEmptyVars("$fsType", "$filler"))
-    fsMountPoint=$(stripEmptyVars("$fsMountPoint", "$filler"))
-    fsUUID=$(stripEmptyVars("$fsUUID", "$filler"))
-    fsMapper=$(stripEmptyVars("$fsMapper", "$filler"))
+    # reconvert in leeren String wenn erforderlich
+    lvmLvName=$(stripEmptyVars "$lvmLvName", "$filler")  
+    lvmLvSize=$(stripEmptyVars "$lvmLvSize", "$filler")
+    fsType=$(stripEmptyVars "$fsType", "$filler")
+    fsMountPoint=$(stripEmptyVars "$fsMountPoint", "$filler")
+    fsUUID=$(stripEmptyVars "$fsUUID", "$filler") 
+    fsMapper=$(stripEmptyVars "$fsMapper", "$filler")
 
     log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
     log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
@@ -550,12 +551,13 @@ do
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
 
-    lvmLvName=$(stripEmptyVars("$lvmLvName", "$filler"))  # reconvert in leeren String wenn erforderlich
-    lvmLvSize=$(stripEmptyVars("$lvmLvSize", "$filler"))
-    fsType=$(stripEmptyVars("$fsType", "$filler"))
-    fsMountPoint=$(stripEmptyVars("$fsMountPoint", "$filler"))
-    fsUUID=$(stripEmptyVars("$fsUUID", "$filler"))
-    fsMapper=$(stripEmptyVars("$fsMapper", "$filler"))
+    # reconvert in leeren String wenn erforderlich
+    lvmLvName=$(stripEmptyVars "$lvmLvName", "$filler")  
+    lvmLvSize=$(stripEmptyVars "$lvmLvSize", "$filler")
+    fsType=$(stripEmptyVars "$fsType", "$filler")
+    fsMountPoint=$(stripEmptyVars "$fsMountPoint", "$filler")
+    fsUUID=$(stripEmptyVars "$fsUUID", "$filler") 
+    fsMapper=$(stripEmptyVars "$fsMapper", "$filler")
 
     # kein Mountpoint, dann auf "none" setzen (swap)
     if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
