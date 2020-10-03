@@ -50,7 +50,7 @@ function pathExistsOrCreate() {
     fi
 
     # Übergabeparameter abholen
-    pEOCPath=1$
+    pEOCPath=$1
 
     # Prüfen ob Verzeichnis existiert...
     log "regular" "DEBUG" "if [ ! -d $pEOCPath ]"
@@ -121,10 +121,46 @@ function pathEmptyOrDelContent() {
             # Nein - Verzeichnis ist leer.
             log "regular" "INFO" "Inhalt von Verzeichnis $pEODCPath wurde erfolgreich gelöscht."
             return 0    # Returncode 0 = Ok
+        fi
     else
         # Nein - Verzeichnis ist leer.
         log "regular" "INFO" "Verzeichnis $pEODCPath ist leer."
         return 0    # Returncode 0 = Ok
+    fi
+}
+
+# =========================================================
+# Funktion:     fillEmptyVars()
+# Aufgabe:      füllt eine Variable mit einem vorgegebenen
+#               String, wenn diese leer ist
+# Parameter:    $1 zu prüfender String
+#               $2 Füllstring
+# Return:       0: Ok
+#               2: Wenn Fehler in Parameterübergabe
+# Echo:         String
+# =========================================================
+function fillEmptyVars {
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        log "regular" "WARNING" "function fillEmptyVars() - Fehler Parameterübergabe"
+        # echo "usage: $0 INSTRING FILLER"
+        return 2    # Returncode 2 = Fehler, Übergabeparameter
+    fi
+
+    # Übergabeparameter abholen
+    fEVInString=$1
+    fEVFiller=$2
+
+    # echo $1
+    if [ "$fEVInString" == "" ]; then
+        # Input-String ist leer - mit Füllstring füllen
+        echo $fEVFiller
+        return 0
+    else
+        # Input-String ist nicht leer - Input string zurückgeben
+        echo $fEVInString
+        return 0
     fi
 }
 
@@ -138,6 +174,8 @@ fsSourceBootPartition="/dev/sda1"
 
 mntSrc="/mnt/src"               # Mountpoint Quelle
 mntDst="/mnt/dst"               # Mountpoint Ziel
+
+filler="none"                   # Füllwert, mit dem leere Variablen befüllt werden
 
 # STEP 1: LVM AUF DER NEUEN PARTITION EINRICHTEN
 # ==============================================
@@ -200,14 +238,12 @@ do
 
     # Dateisysteme anlegen...
     log "regular" "DEBUG" "if [ $fsType == ext4 ]"
-    if [ "$fsType" == "ext4" ]
-    then
+    if [ "$fsType" == "ext4" ]; then
         log "regular" "INFO" "Filesystem ist ext4"
         # Dateisysteme auf den LVs anlegen
         log "regular" "DEBUG" "mkfs.ext4 /dev/$lvmVgName/$lvmLvName"
         mkfs.ext4 "/dev/$lvmVgName/$lvmLvName"
-    elif [ "$fsType" == "swap" ]
-    then
+    elif [ "$fsType" == "swap" ]; then
         log "regular" "INFO" "Filesystem ist swap"
         # Swap Filesystem anlegen
         log "regular" "DEBUG" "mkswap /dev/$lvmVgName/$lvmLvName"
@@ -233,6 +269,15 @@ do
 
     
     # ERGEBISSE FÜR NÄCHSTE SCHLEIFE AUFARBEITEN
+
+    # leere Variablen mit Dummy-Wert füllen
+    fillEmptyVars "$lvmLvName" "$filler"
+    fillEmptyVars "$lvmLvSize" "$filler"
+    fillEmptyVars "$fsType" "$filler"
+    fillEmptyVars "$fsMountPoint" "$filler"
+    fillEmptyVars "$fsTempMountPoint" "$filler"
+    fillEmptyVars "$fsUUID" "$filler"
+    fillEmptyVars "$fsMapper" "$filler"
 
     # Wenn nextLoop nicht leer ist erstmal einen Zeilenumbruch dranhängen...
     if [ "$nextLoop" != "" ] 
