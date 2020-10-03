@@ -385,12 +385,12 @@ do
     fsMapper=$(echo "$line" | awk '{print $7}')
 
     # reconvert in leeren String wenn erforderlich
-    lvmLvName=$(stripEmptyVars "$lvmLvName", "$filler")  
-    lvmLvSize=$(stripEmptyVars "$lvmLvSize", "$filler")
-    fsType=$(stripEmptyVars "$fsType", "$filler")
-    fsMountPoint=$(stripEmptyVars "$fsMountPoint", "$filler")
-    fsUUID=$(stripEmptyVars "$fsUUID", "$filler") 
-    fsMapper=$(stripEmptyVars "$fsMapper", "$filler")
+    lvmLvName=$(stripEmptyVars "$lvmLvName" "$filler")  
+    lvmLvSize=$(stripEmptyVars "$lvmLvSize" "$filler")
+    fsType=$(stripEmptyVars "$fsType" "$filler")
+    fsMountPoint=$(stripEmptyVars "$fsMountPoint" "$filler")
+    fsUUID=$(stripEmptyVars "$fsUUID" "$filler") 
+    fsMapper=$(stripEmptyVars "$fsMapper" "$filler")
 
     log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
     log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
@@ -554,12 +554,12 @@ do
     fsMapper=$(echo "$line" | awk '{print $7}')
 
     # reconvert in leeren String wenn erforderlich
-    lvmLvName=$(stripEmptyVars "$lvmLvName", "$filler")  
-    lvmLvSize=$(stripEmptyVars "$lvmLvSize", "$filler")
-    fsType=$(stripEmptyVars "$fsType", "$filler")
-    fsMountPoint=$(stripEmptyVars "$fsMountPoint", "$filler")
-    fsUUID=$(stripEmptyVars "$fsUUID", "$filler") 
-    fsMapper=$(stripEmptyVars "$fsMapper", "$filler")
+    lvmLvName=$(stripEmptyVars "$lvmLvName" "$filler")  
+    lvmLvSize=$(stripEmptyVars "$lvmLvSize" "$filler")
+    fsType=$(stripEmptyVars "$fsType" "$filler")
+    fsMountPoint=$(stripEmptyVars "$fsMountPoint" "$filler")
+    fsUUID=$(stripEmptyVars "$fsUUID" "$filler") 
+    fsMapper=$(stripEmptyVars "$fsMapper" "$filler")
 
     # kein Mountpoint, dann auf "none" setzen (swap)
     if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
