@@ -6,6 +6,31 @@ function test {
     return 1
 }
 
+function fillEmptyVars {
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        echo "usage: $0 INSTRING FILLER"
+        return 2    # Returncode 2 = Fehler, Übergabeparameter
+    fi
+
+    # Übergabeparameter abholen
+    fEVInString=$1
+    fEVFiller=$2
+
+    echo "InString: $1"
+    if [ "$fEVInString" == "" ]; then
+        # Input-String ist leer - mit Füllstring füllen
+        echo $fEVFiller
+        return 0
+    else
+        # Input-String ist nicht leer - Input string zurückgeben
+        echo $fEVInString
+        return 0
+    fi
+}
+
+
 var='lv_root 10G ext4 /mnt/new
 lv_swap 16G swap
 lv_home 20G ext4
@@ -63,3 +88,14 @@ elif [ $r -eq 1 ]; then
 else
     echo "false"
 fi
+
+f="none"
+
+fillEmptyVars "$s" "$f"
+s="hallo"
+s=$(fillEmptyVars $s $f)
+echo $?
+s=""
+fillEmptyVars "$s" "$f"
+s=$(fillEmptyVars $s $f)
+echo $?
