@@ -19,21 +19,13 @@ rERROR_IncludingFail=2011
 rERROR_NoRootEntryFstab=2012
 
 
-# Check if script is running as root...
-SYSTEM_USER_NAME=$(id -un)
-if [[ "${SYSTEM_USER_NAME}" != 'root'  ]]
-then
-    echo 'You are running the script not as root'
-    exit $rERROR_RunNotAsRoot
-fi
-
 # Logging einbinden...
 LOGLEVEL="0"
 ENABLE_LOG="1"
 #Rund in Logging / Debug Mode only, means to print out log messages to STDOUT
 DEBUG=0
 LOGDIR="$(pwd)/log"
-LOGFILE="$LOGDIR/$(date +%Y%m%d)_part2lvm.log"
+LOGFILE="$LOGDIR/$(date +%Y%m%d-%H%M%S)_part2lvm.log"
 
 # Then source the utils.sh
 if [ -f ./utils.sh ] ;then
@@ -214,7 +206,17 @@ function stripEmptyVars {
     fi
 }
 
-log "regular" "INFO" "Script $0 gestartet."
+log "begin" "INFO" "Script $0 gestartet."
+
+# Check if script is running as root...
+SYSTEM_USER_NAME=$(id -un)
+if [[ "${SYSTEM_USER_NAME}" != 'root'  ]]
+then
+    log "regular" "ERROR" "Script nicht mit root-Privilegien gestartet - Abbruch"
+    echo 'You are running the script not as root'
+    exit $rERROR_RunNotAsRoot
+fi
+
 
 # Variablen...
 fsSourceRootDrive="/dev/sda"
@@ -365,7 +367,9 @@ else
 fi
 
 # Souce mounten
+log "regular" "DEBUG" "mount $fsSourceRootPartition $mntSrc"
 mount "$fsSourceRootPartition" "$mntSrc"
+### ToDo: Loggen der Mount-Ausgabe | grep $mntSrc
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
 x=$(echo -e "$nextLoop")
@@ -453,22 +457,18 @@ do
     
         log "regular" "DEBUG" "fsTgt: ........................ $fsTgt"
 
-        # mal schauen, was gemounted wird...
-        mnt=$(mount)
-        ### ToDo: rausziehen ob der im loop zu mountende Pfad gemountet ist
+        # mal schauen, ob mount erfolgreich war
+        mnt=$(mount | grep "$fsTempMountPoint")
         log "regular" "DEBUG" "mnt: .......................... $mnt"
         
         # Zielpfad im alten Mountpoint zusammensetzen...
         fsTgtPath="$mntSrc$fsTgt*"
-        ### ToDo: .../* Slash vor *
         log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
         log "regular" "DEBUG" "fsTgtPath: .................... ${fsTgtPath%/*}"
 
-        ### ToDo: FEHLER $fsTgtPath ist falsch! noch mal prüfen! darf im if kein nicht mit /* abschließen!
-        # if [ -d "$fsTgtPath" ]; then
         if [ -d ${fsTgtPath%/*} ]; then
             # Dateien vom source ins neue Filesystem kopieren
-            log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
+            log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath $fsTempMountPoint"
             # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
             rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath $fsTempMountPoint
         fi
@@ -565,6 +565,7 @@ do
     fsMapper=$(stripEmptyVars "$fsMapper" "$filler")
 
     # kein Mountpoint, dann auf "none" setzen (swap)
+    ### ToDo: nächste Zeile ist obsolete
     if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
     fsOptions="defaults"
     fsDump="0"
@@ -628,13 +629,44 @@ log "regular" "DEBUG" "ENDE Loop3 ==============================================
 # ==================
 
 # /boot mounten...
-mount "$fsSourceBootPartition" /mnt/root/boot
+### ToDo: Verzeichnis erstellen prüfen etc.
+dstBoot="/mnt/dst/boot"
+        # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
+        pathExistsOrCreate $dstBoot
+        result=$?
+        if [ $result -eq 0 ]; then
+            # Rückgabewert 0 - Ok
+            echo "true"
+        else
+            # Rückgabewert 1 und höher - Fehler
+            echo "$result - Abbruch"
+            exit $result
+        fi
+
+        # Prüfen ob der Mountpoint leer ist
+        pathEmptyOrDelContent $dstBoot
+        result=$?
+        if [ $result -eq 0 ]; then
+            # Rückgabewert 0 - Ok
+            echo "0"
+        elif [ $result -eq $rWARNING_PathNotEmpty ]; then
+            # Rückgabewert 1 - Fehler, Verzeichnis nicht leer - Abfrage Abbruch/Weiter
+            echo "$result - Path not empty"
+            ### ToDo: Abfrage bei Fehler ob weiter oder Abbruch
+        else
+            # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe - Abbruch
+            echo "$result - Abbruch"
+            exit $result
+        fi
+
+
+mount "$fsSourceBootPartition" "$dstBoot"
 
 # Mounten der kritischen virtuellen Dateisysteme
-for i in /dev /dev/pts /proc /sys /run; do mount -B $i /mnt/root$i; done
+for i in /dev /dev/pts /proc /sys /run; do mount -B $i /mnt/dst$i; done
 
 # Chroot into your normal system device:
-chroot /mnt/root
+chroot /mnt/dst
 
 # Reinstall GRUB 2 
 grub-install "$fsSourceBootDrive"
