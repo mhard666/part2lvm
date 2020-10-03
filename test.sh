@@ -6,11 +6,36 @@ function test {
     return 1
 }
 
+function stripEmptyVars {
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        #log "regular" "WARNING" "function fillEmptyVars() - Fehler Parameterübergabe"
+        # echo "usage: $0 INSTRING FILLER"
+        return 2    # Returncode 2 = Fehler, Übergabeparameter
+    fi
+
+    # Übergabeparameter abholen
+    sEVInString=$1
+    sEVFiller=$2
+
+    # echo $1
+    if [ "$sEVInString" == "$sEVFiller" ]; then
+        # Input-String ist gleich Füllstring - leeren String setzen
+        echo ""
+        return 0
+    else
+        # Input-String ungleich Füllstring - Input string zurückgeben
+        echo $sEVInString
+        return 1
+    fi
+}
+
 function fillEmptyVars {
     # Parameter prüfen
     if [ $# -lt 2 ]
     then
-        echo "usage: $0 INSTRING FILLER"
+        # echo "usage: $0 INSTRING FILLER"
         return 2    # Returncode 2 = Fehler, Übergabeparameter
     fi
 
@@ -18,7 +43,7 @@ function fillEmptyVars {
     fEVInString=$1
     fEVFiller=$2
 
-    echo "InString: $1"
+    # echo "InString: $1"
     if [ "$fEVInString" == "" ]; then
         # Input-String ist leer - mit Füllstring füllen
         echo $fEVFiller
@@ -91,11 +116,21 @@ fi
 
 f="none"
 
+s="bla"
 fillEmptyVars "$s" "$f"
+echo $?
+
 s="hallo"
-s=$(fillEmptyVars $s $f)
+s=$(fillEmptyVars "$s" "$f")
 echo $?
+echo "01: String ist -$s-"
+
 s=""
-fillEmptyVars "$s" "$f"
-s=$(fillEmptyVars $s $f)
+s=$(fillEmptyVars "$s" "$f")
 echo $?
+echo "02: String ist -$s-"
+
+s=$(stripEmptyVars "$s" "$f")
+echo $?
+echo "03: String ist -$s-"
+
