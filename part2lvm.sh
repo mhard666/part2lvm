@@ -462,8 +462,11 @@ do
         fsTgtPath="$mntSrc$fsTgt*"
         ### ToDo: .../* Slash vor *
         log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
+        log "regular" "DEBUG" "fsTgtPath: .................... ${fsTgtPath%/*}"
 
-        if [ -d "$fsTgtPath" ]; then
+        ### ToDo: FEHLER $fsTgtPath ist falsch! noch mal prüfen! darf im if kein nicht mit /* abschließen!
+        # if [ -d "$fsTgtPath" ]; then
+        if [ -d ${fsTgtPath%/*} ]; then
             # Dateien vom source ins neue Filesystem kopieren
             log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
             # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
