@@ -53,6 +53,7 @@ fi
 #            1: wenn Verzeichnis nicht existiert und 
 #               nicht angelegt werden konnte
 #            2: wenn kein Parameter angegeben wurde
+# ToDo:      rekursiv ParentPath prüfen, anlegen
 # =========================================================
 function pathExistsOrCreate() {
     # Parameter prüfen
@@ -73,9 +74,10 @@ function pathExistsOrCreate() {
         return 0    # Returncode 0 = Ok
     else
         # Nein - Verzeichnis anlegen...
+        ### ToDo: prüfen ob ParentPath existiert, da 
         log "regular" "WARNING" "FUNC: pathExistsOrCreate(): Verzeichnis $pEOCPath existiert nicht - erstellen."
         log "regular" "DEBUG" "mkdir $pEOCPath"
-        mkdir "$pEOCPath"
+        mkdir "$pEOCPath" -p
         # Nochmal prüfen ob Verzeichnis jetzt existiert...
         if [ -d "$pEOCPath" ]
         then
@@ -207,7 +209,7 @@ function stripEmptyVars {
     else
         log "regular" "INFO" "FUNC: stripEmptyVars(): InString != Filler"
         # Input-String ungleich Füllstring - Input string zurückgeben
-        echo $fEVInString
+        echo $sEVInString
         return 0
     fi
 }
