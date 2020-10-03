@@ -6,12 +6,25 @@
 #
 # Author: Mirko Härtwig
 
+# Konstanten
+# rWARNING_xxx : return Codes WARNING ab 1000
+rWARNING_PathNotEmpty=1000
+
+# rERROR_xxx : return Codes ERROR ab 2000
+rERROR_RunNotAsRoot=2000
+rERROR_WrongParameters=2001
+rERROR_FileNotFound=2002
+rERROR_PathNotExist=2010
+rERROR_IncludingFail=2011
+rERROR_NoRootEntryFstab=2012
+
+
 # Check if script is running as root...
 SYSTEM_USER_NAME=$(id -un)
 if [[ "${SYSTEM_USER_NAME}" != 'root'  ]]
 then
     echo 'You are running the script not as root'
-    exit 1
+    exit $rERROR_RunNotAsRoot
 fi
 
 # Logging einbinden...
@@ -27,7 +40,7 @@ if [ -f ./utils.sh ] ;then
     . ./utils.sh
 else
     echo "ERROR: ./utils.sh not available"
-    exit 1;
+    exit $rERROR_IncludingFail
 fi
 
 # =========================================================
@@ -46,34 +59,33 @@ function pathExistsOrCreate() {
     if [ $# -lt 1 ]
     then
         echo "usage: $0 PATH"
-        return 2    # Returncode 2 = Fehler, Übergabeparameter
+        return $rERROR_WrongParameters
     fi
 
     # Übergabeparameter abholen
     pEOCPath=$1
 
     # Prüfen ob Verzeichnis existiert...
-    log "regular" "DEBUG" "if [ ! -d $pEOCPath ]"
     if [ -d "$pEOCPath" ]
     then
         # Ja - alles ok.
-        log "regular" "INFO" "Verzeichnis $pEOCPath existiert."
+        log "regular" "INFO" "FUNC: pathExistsOrCreate(): Verzeichnis $pEOCPath existiert."
         return 0    # Returncode 0 = Ok
     else
         # Nein - Verzeichnis anlegen...
-        log "regular" "INFO" "Verzeichnis $pEOCPath existiert nicht - erstellen."
+        log "regular" "WARNING" "FUNC: pathExistsOrCreate(): Verzeichnis $pEOCPath existiert nicht - erstellen."
         log "regular" "DEBUG" "mkdir $pEOCPath"
         mkdir "$pEOCPath"
         # Nochmal prüfen ob Verzeichnis jetzt existiert...
         if [ -d "$pEOCPath" ]
         then
             # Ja - alles ok
-            log "regular" "INFO" "Verzeichnis $pEOCPath existiert."
+            log "regular" "INFO" "FUNC: pathExistsOrCreate(): Verzeichnis $pEOCPath existiert."
             return 0    # Returncode 0 = Ok
         else
             # Nein - nicht gut - $false zurückgeben
-            log "regular" "INFO" "Verzeichnis $pEOCPath konnte nicht erstellt werden"
-            return 1    # Returncode 1 = Fehler, Verzeichnis nicht vorhanden
+            log "regular" "ERROR" "FUNC: pathExistsOrCreate(): Verzeichnis $pEOCPath konnte nicht erstellt werden"
+            return $rERROR_PathNotExist
         fi 
     fi 
 }
@@ -95,36 +107,34 @@ function pathEmptyOrDelContent() {
     if [ $# -lt 1 ]
     then
         echo "usage: $0 PATH"
-        return 2    # Returncode 2 = Fehler, Übergabeparameter
+        return $rERROR_WrongParameters
     fi
 
     # Übergabeparameter abholen
     pEODCPath=$1
 
     #Prüfen, ob das Verzeichnis Dateien/Ordner enthält...
-    log "regular" "DEBUG" "if [ -n $(ls -A $pEODCPath) ]"
     if [ -n "$(ls -A $pEODCPath)" ]
     then
         # Ja - Verzeichnis ist nicht leer - Inhalte löschen...
-        log "regular" "INFO" "Mountverzeichnis $pEODCPath ist nicht leer - löschen"
+        log "regular" "INFO" "FUNC: pathEmptyOrDelContent(): Verzeichnis $pEODCPath nicht leer - löschen"
         # Alles unterhalb des Mountpoint löschen
-        log "regular" "DEBUG" "find $pEODCPath -mindepth 1 -delete"
         find "$pEODCPath" -mindepth 1 -delete
 
         # Nochmal prüfen, ob das Verzeichnis jetzt immernoch Dateien/Ordner enthält...
         if [ -n "$(ls -A $pEODCPath)" ]
         then
             # Ja - Verzeichnis ist immernoch nicht leer - return $false
-            log "regular" "INFO" "Verzeichnis $pEODCPath konnte nicht geleert werden."
-            return 1    # Returncode 1 = Fehler, Pfad nicht leer
+            log "regular" "WARNING" "FUNC: pathEmptyOrDelContent(): Verzeichnis $pEODCPath konnte nicht geleert werden."
+            return $rWARNING_PathNotEmpty
         else
             # Nein - Verzeichnis ist leer.
-            log "regular" "INFO" "Inhalt von Verzeichnis $pEODCPath wurde erfolgreich gelöscht."
+            log "regular" "INFO" "FUNC: pathEmptyOrDelContent(): Inhalt von Verzeichnis $pEODCPath wurde erfolgreich gelöscht."
             return 0    # Returncode 0 = Ok
         fi
     else
         # Nein - Verzeichnis ist leer.
-        log "regular" "INFO" "Verzeichnis $pEODCPath ist leer."
+        log "regular" "INFO" "FUNC: pathEmptyOrDelContent(): Verzeichnis $pEODCPath ist leer."
         return 0    # Returncode 0 = Ok
     fi
 }
@@ -143,9 +153,8 @@ function fillEmptyVars {
     # Parameter prüfen
     if [ $# -lt 2 ]
     then
-        log "regular" "WARNING" "function fillEmptyVars() - Fehler Parameterübergabe"
-        # echo "usage: $0 INSTRING FILLER"
-        return 2    # Returncode 2 = Fehler, Übergabeparameter
+        log "regular" "ERROR" "FUNC: fillEmptyVars(): Fehler bei Parameterübergabe"
+        return $rERROR_WrongParameters
     fi
 
     # Übergabeparameter abholen
@@ -154,11 +163,50 @@ function fillEmptyVars {
 
     # echo $1
     if [ "$fEVInString" == "" ]; then
+        log "regular" "INFO" "FUNC: fillEmptyVars(): InString is empty"
         # Input-String ist leer - mit Füllstring füllen
         echo $fEVFiller
         return 0
     else
+        log "regular" "INFO" "FUNC: fillEmptyVars(): InString not empty"
         # Input-String ist nicht leer - Input string zurückgeben
+        echo $fEVInString
+        return 0
+    fi
+}
+
+# =========================================================
+# Funktion:     stripEmptyVars()
+# Aufgabe:      entfernt in einer Variable mit einem 
+#               vorgegebenen String und gibt einen leeren
+#               String zurück
+# Parameter:    $1 zu prüfender String
+#               $2 Füllstring
+# Return:       0: Ok
+#               2: Wenn Fehler in Parameterübergabe
+# Echo:         String
+# =========================================================
+function stripEmptyVars {
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        log "regular" "ERROR" "FUNC: stripEmptyVars(): Fehler bei Parameterübergabe"
+        return $rERROR_WrongParameters
+    fi
+
+    # Übergabeparameter abholen
+    sEVInString=$1
+    sEVFiller=$2
+
+    # echo $1
+    if [ "$sEVInString" == "$sEVFiller" ]; then
+        log "regular" "INFO" "FUNC: stripEmptyVars(): InString == Filler"
+        # Input-String ist gleich Füllstring - leeren String setzen
+        echo ""
+        return 0
+    else
+        log "regular" "INFO" "FUNC: stripEmptyVars(): InString != Filler"
+        # Input-String ungleich Füllstring - Input string zurückgeben
         echo $fEVInString
         return 0
     fi
@@ -215,10 +263,10 @@ lv_var_lib_postgresql 2G ext4 /var/lib/postgresql /mnt/dst/var/lib/postgresql'
 # Variable zur Zeilenweisen Aufbereitung der Ergebnisse aus dem vorhergehenden Loop zur Weiterverarbeitung im nächsten Loop
 nextLoop=""
 
-log "regular" "INFO" "### Start Loop1..."
+log "regular" "INFO" "START Loop1 ====================================================================================="
 while read -r line
 do 
-    log "regular" "DEBUG" "read -r $line"
+    log "regular" "DEBUG" "------------------------ loop:"
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
     fsType=$(echo "$line" | awk '{print $3}')
@@ -233,37 +281,27 @@ do
     log "regular" "DEBUG" "fsTempMountPoint: ............ $fsTempMountPoint"
 
     # Erstellen des Logical Volumes...
-    log "regular" "DEBUG" "lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName"
     lvcreate -L $lvmLvSize -n $lvmLvName $lvmVgName
 
     # Dateisysteme anlegen...
-    log "regular" "DEBUG" "if [ $fsType == ext4 ]"
     if [ "$fsType" == "ext4" ]; then
         log "regular" "INFO" "Filesystem ist ext4"
         # Dateisysteme auf den LVs anlegen
-        log "regular" "DEBUG" "mkfs.ext4 /dev/$lvmVgName/$lvmLvName"
         mkfs.ext4 "/dev/$lvmVgName/$lvmLvName"
     elif [ "$fsType" == "swap" ]; then
         log "regular" "INFO" "Filesystem ist swap"
         # Swap Filesystem anlegen
-        log "regular" "DEBUG" "mkswap /dev/$lvmVgName/$lvmLvName"
         mkswap "/dev/$lvmVgName/$lvmLvName"
     else
         # nicht unterstützt - Fehler
-        log "regular" "INFO" "Kein unterstütztes Filesystem - übersprungen"
+        log "regular" "WARN" "Kein unterstütztes Filesystem - übersprungen"
         echo "Kein unterstütztes Dateisystem - übersprungen."
     fi
 
     # Dateisysteme ausgeben, UUID ermitteln
-    log "regular" "INFO" "fsUUID=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\")"
-    dummy=$(blkid)
-    log "regular" "DEBUG" "dummy: ....................... $dummy"
-    dummy=$(blkid | grep -i "\-$lvmLvName:")
-    log "regular" "DEBUG" "dummy: ....................... $dummy"
     fsUUID=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\"[0-9a-z]{8}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{12}\"')
-    log "regular" "DEBUG" "fsUUID: ...................... $fsUUID"
+    log "regular" "DEBUG" "fsUUID: ........................ $fsUUID"
     # Dateisysteme ausgeben, Mapper ermitteln
-    log "regular" "DEBUG" "fsMapper=\$(blkid | grep -i \-$lvmLvName: | grep -o -E \/dev\/mapper\/[0-9a-zA-Z\_\-]*)"
     fsMapper=$(blkid | grep -i "\-$lvmLvName:" | grep -o -E '\/dev\/mapper\/[0-9a-zA-Z\_\-]*')
     log "regular" "DEBUG" "fsMapper: .................... $fsMapper"
 
@@ -286,94 +324,54 @@ do
     fi
 
     # Hier die aufbereiteten Zeilen hin, Spalten jeweils Leerzeichen-separiert
-    ### ToDo: Leere Variablen mit Dummy-Werten füllen, sonst gibt es probleme bei der Auswertung der Parameter im nächsten Loop!!!
     ### ToDo: fsTempMountPoint rausnehmen
     nextLoop+="$lvmLvName $lvmLvSize $fsType $fsMountPoint $fsTempMountPoint $fsUUID $fsMapper"
 
-
 done <<<"$lvmLogicalVolumeData"
-log "regular" "INFO" "### End Loop1..."
+log "regular" "INFO" "ENDE Loop1 ======================================================================================"
 
 
 # NÄCHSTER LOOP: Neues Filesystem mounten und altes dahin syncen
 # ==============================================================
 
-### ToDo: fsOMP ersetzen durch mntSrc
-# MountPoint für QuellFileSystem
-fsOMP="$mntSrc"
-
 # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
-# prüfen ob Verzeichnis leer, wenn nicht, leeren...
-log "regular" "DEBUG" "if [ ! -d $fsOMP ]"
-##if [ ! -d "$fsOMP" ]
-##then
-##    log "regular" "INFO" "Mountverzeichnis $fsOMP existiert nicht"
-##    log "regular" "DEBUG" "mkdir $fsOMP"
-##    mkdir "$fsOMP"
-##    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
-##    # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
-##    # Script-Abbruch bei Fehler...
-##else
-##    log "regular" "INFO" "Verzeichnis $fsOMP existiert."
-##fi 
-
-pathExistsOrCreate $fsOMP
+pathExistsOrCreate $mntSrc
 result=$?
 if [ $result -eq 0 ]; then
     # Rückgabewert 0 - Verzeichnis existiert
     echo "0 - OK"
-elif [ $result -eq 1 ]; then
-    # Rückgabewert 1 - Verzeichnis existiert nicht - Abbruch
-    echo "1 - Fehler"
-    exit
 else
-    # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe
-    echo "2+ - Abbruch"
-    exit 
+    # Rückgabewert 1 oder höher - Abbruch
+    echo "$result - Abbruch"
+    exit $result
 fi
 
-# Prüfen ob der Mountpoint leer ist
-### ToDo: in Funktion auslagern
-log "regular" "DEBUG" "if [ -n $(ls -A $fsOMP) ]"
-##if [ -n "$(ls -A $fsOMP)" ]
-##then
-##    log "regular" "INFO" "Mountverzeichnis $fsOMP ist nicht leer - löschen"
-##    # Alles unterhalb des Mountpoint löschen
-##    log "regular" "DEBUG" "find $fsOMP -mindepth 1 -delete"
-##    find "$fsOMP" -mindepth 1 -delete
-##    ### ToDo: ggf. Warnung bei Fehler
-##    # Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
-##else
-##    log "regular" "INFO" "Verzeichnis $fsOMP ist leer."
-##fi
-
-pathEmptyOrDelContent $fsOMP
+# prüfen ob Verzeichnis leer, wenn nicht, leeren...
+pathEmptyOrDelContent $mntSrc
 result=$?
 if [ $result -eq 0 ]; then
     # Rückgabewert 0 - Verzeichnis ist leer
     echo "0"
-elif [ $result -eq 1 ]; then
+elif [ $result -eq $rWARNING_PathNotEmpty ]; then
     # Rückgabewert 1 - Verzeichnis ist nicht leer - Warnung mit Option zum Abbruch
-    echo "1"
+    echo "$result - Path not empty"
     ### ToDo: Abfrage Abbruch/Weiter?
 else
     # Rückgabewert 2 und höher - Fehler bei Parameterübergabe - Abbruch
-    echo "2"
-    exit
+    echo "$result - Abbruch"
+    exit $result
 fi
 
-
 # Souce mounten
-log "regular" "DEBUG" "mount $fsSourceRootPartition $fsOMP"
-mount "$fsSourceRootPartition" "$fsOMP"
+mount "$fsSourceRootPartition" "$mntSrc"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
 x=$(echo -e "$nextLoop")
 
-log "regular" "INFO" "### Start Loop2..."
+log "regular" "INFO" "START Loop2 ====================================================================================="
 while read -r line 
 do
-    log "regular" "DEBUG" "line: ........................ $line"
+    log "regular" "DEBUG" "-------------------------- loop:"
 
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
@@ -383,6 +381,13 @@ do
     fsTempMountPoint="$mntDst$fsMountPoint"
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
+
+    lvmLvName=$(stripEmptyVars("$lvmLvName", "$filler"))  # reconvert in leeren String wenn erforderlich
+    lvmLvSize=$(stripEmptyVars("$lvmLvSize", "$filler"))
+    fsType=$(stripEmptyVars("$fsType", "$filler"))
+    fsMountPoint=$(stripEmptyVars("$fsMountPoint", "$filler"))
+    fsUUID=$(stripEmptyVars("$fsUUID", "$filler"))
+    fsMapper=$(stripEmptyVars("$fsMapper", "$filler"))
 
     log "regular" "DEBUG" "lvmLvName: ................... $lvmLvName"
     log "regular" "DEBUG" "lvmLvSize: ................... $lvmLvSize"
@@ -399,67 +404,38 @@ do
         log "regular" "INFO" "Filesystem ist kein swap-FS"
         
         # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
-        log "regular" "DEBUG" "if [ ! -d $fsTempMountPoint ]"
-        ##if [ ! -d "$fsTempMountPoint" ]
-        ##then
-        ##    log "regular" "INFO" "Temporärer Mountpoint $fsTempMountPoint existiert nicht - Verzeichnis anlegen"
-        ##    log "regular" "DEBUG" "mkdir $fsTempMountPoint"
-        ##    mkdir $fsTempMountPoint
-        ##    ### ToDo: ggf. Berechtigungen setzen, ggf. Abbruch bei Fehler
-        ##    # chmod -R u=rwx,g+rw-x,o+rwx $mountpfad
-        ##    # Script-Abbruch bei Fehler...
-        ##else
-        ##    log "regular" "INFO" "$fsTempMountPoint ist vorhanden."
-        ##fi 
-
         pathExistsOrCreate $fsTempMountPoint
         result=$?
         if [ $result -eq 0 ]; then
             # Rückgabewert 0 - Ok
             echo "true"
-        elif [ $result -eq 1 ]; then
-            # Rückgabewert 1 - Fehler, Pfad ist nicht vorhanden - Abbruch
-            echo "1"
-            exit
         else
-            # Rückgabewert 2 und höher - Fehler bei der Parameterübergabe
-            echo "2"
-            exit
+            # Rückgabewert 1 und höher - Fehler
+            echo "$result - Abbruch"
+            exit $result
         fi
 
         # Prüfen ob der Mountpoint leer ist
-        log "regular" "DEBUG" "if [ -n $(ls -A $fsTempMountPoint) ]"
-        ##if [ -n "$(ls -A $fsTempMountPoint)" ]
-        ##then
-        ##    log "regular" "INFO" "Mountpoint $fsTempMountPoint enthält Daten - löschen"
-        ##    # Alles unterhalb des Mountpoint löschen
-        ##    log "regular" "DEBUG" "find $fsTempMountPoint -mindepth 1 -delete"
-        ##    find $fsTempMountPoint -mindepth 1 -delete
-        ##    ### ToDo: Warnung bei Fehler... (kann notfalls im Nachgang händisch entfernt werden)
-        ##else
-        ##    log "regular" "INFO" "Verzeichnis ist leer."
-        ##fi
-
         pathEmptyOrDelContent $fsTempMountPoint
         result=$?
         if [ $result -eq 0 ]; then
             # Rückgabewert 0 - Ok
             echo "0"
-        elif [ $result -eq 1 ]; then
+        elif [ $result -eq $rWARNING_PathNotEmpty ]; then
             # Rückgabewert 1 - Fehler, Verzeichnis nicht leer - Abfrage Abbruch/Weiter
-            echo "1"
+            echo "$result - Path not empty"
             ### ToDo: Abfrage bei Fehler ob weiter oder Abbruch
         else
             # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe - Abbruch
-            echo "2+"
-            exit
+            echo "$result - Abbruch"
+            exit $result
         fi
 
         # In Mountpoint mounten
         log "regular" "DEBUG" "mount /dev/$lvmVgName/$lvmLvName $fsTempMountPoint"
         mount "/dev/$lvmVgName/$lvmLvName" "$fsTempMountPoint"
 
-        log "regular" "DEBUG" "if [ \${QDIR:(-1)} == / ]"
+        # prüfen, ob letztes Zeichen in $fsMountPoint ein / ist...
         if [ "${fsMountPoint:(-1)}" == "/" ]; then
             log "regular" "INFO" "Slash am Ende"
             echo Slash am Ende!
@@ -476,23 +452,24 @@ do
 
         # mal schauen, was gemounted wird...
         mnt=$(mount)
+        ### ToDo: rausziehen ob der im loop zu mountende Pfad gemountet ist
         log "regular" "DEBUG" "mnt: .......................... $mnt"
         
         # Zielpfad im alten Mountpoint zusammensetzen...
-        fsTgtPath="$fsOMP$fsTgt*"
+        fsTgtPath="$mntSrc$fsTgt*"
         ### ToDo: .../* Slash vor *
         log "regular" "DEBUG" "fsTgtPath: .................... $fsTgtPath"
 
-        
-        ### ToDo: vorher prüfen, ob Quelle existiert, sonst rsync überspringen
-        # Dateien vom source ins neue Filesystem kopieren
-        log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
-        # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
-        rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath $fsTempMountPoint
+        if [ -d "$fsTgtPath" ]; then
+            # Dateien vom source ins neue Filesystem kopieren
+            log "regular" "DEBUG" "rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath* $fsTempMountPoint"
+            # rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "$fsOMP$fsTgt*" "$fsTempMountPoint"
+            rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* $fsTgtPath $fsTempMountPoint
+        fi
     fi
 
 done <<<"$x"
-log "regular" "INFO" "### End Loop2..."
+log "regular" "INFO" "ENDE Loop2 ======================================================================================"
 
 echo "Taste drücken..."
 read $x
@@ -502,53 +479,55 @@ read $x
 # ============================
 
 fstab="$mntDst/etc/fstab"
-
 log "regular" "DEBUG" "fstab: ....................... $fstab"
 
-# prüfen, ob ein /boot Eintrag existiert - wenn nicht, evtl. abbruch
-row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' $fstab)
+# prüfen, ob fstab am angegebenen Ort existiert...
+if [ -f "$fstab" ]; then
+    # prüfen, ob ein /boot Eintrag existiert - wenn nicht, evtl. abbruch
+    row=$(grep -E '^[^#].+\s\/boot\s{2,}ext[2-4]' $fstab)
+    log "regular" "DEBUG" "row: ......................... $row"
 
-log "regular" "DEBUG" "row: ......................... $row"
+    # prüfen ob row != "", sonst ist keine extra boot Partition vorhanden, was ggf die einrichtung des Bootloaders verkompliziert...
+    if [ "$row" == "" ]
+    then
+        log "regular" "INFO" "row = leer - kein Eintrag für eine Bootpartition vorhanden"
+        # Abfrage mit option zu beenden...
+        log "regular" "WARN" "Keine boot Partiton gefunden"
+        echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
+        read $x
+        ### ToDo: Abfrage...
+    fi
 
-# prüfen ob row != "", sonst ist keine extra boot Partition vorhanden, was ggf die einrichtung des Bootloaders verkompliziert...
-log "regular" "DEBUG" "if [ $row == \"\" ]"
-if [ "$row" == "" ]
-then
-    log "regular" "INFO" "row = leer - kein Eintrag für eine Bootpartition vorhanden"
-    # Abfrage mit option zu beenden...
-    log "regular" "WARN" "Keine boot Partiton gefunden"
-    echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
-    read $x
-    ### ToDo: Abfrage...
-fi
+    # $row zurücksetzen...
+    row=""
 
-# $row zurücksetzen...
-row=""
+    # alten root-Eintrag ermitteln.
+    row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' $fstab)
+    log "regular" "DEBUG" "row: ......................... $row"
 
-# alten root-Eintrag ermitteln.
-row=$(grep -n -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' $fstab)
+    # Prüfen ob $row != "" (Wenn $row != "" ist eine root-Partition vorhanden...)
+    if [ "$row" != "" ]
+    then
+        log "regular" "INFO" "Es wurde ein Eintrag für eine root-Partition gefunden"
+        # Ergebnis in $row zerlegen in den Zeilentext...
+        oldRoot=$(echo $row | awk -F':' '{print $2}')
+        # ...und die Zeilennummer
+        oldRootLine=$(echo $row | awk -F':' '{print $1}')
 
-log "regular" "DEBUG" "row: ......................... $row"
-
-# Prüfen ob $row != "" (Wenn $row != "" ist eine root-Partition vorhanden...)
-log "regular" "DEBUG" "if [ $row != \"\" ]"
-if [ "$row" != "" ]
-then
-    log "regular" "INFO" "Es wurde ein Eintrag für eine root-Partition gefunden"
-    # Ergebnis in $row zerlegen in den Zeilentext...
-    oldRoot=$(echo $row | awk -F':' '{print $2}')
-    # ...und die Zeilennummer
-    oldRootLine=$(echo $row | awk -F':' '{print $1}')
-
-    # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
-    sed "$oldRootLine c \
-    # $oldRoot" $fstab
+        # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
+        sed "$oldRootLine c \
+        # $oldRoot" $fstab
+    else
+        log "regular" "INFO" "Es wurde kein Eintrag für eine root-Partition gefunden"
+        # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
+        log "regular" "ERROR" "Kein Eintrag für root-Filesystem in $fstab gefunden. Script wird beendet."
+        echo "FEHLER: Kein root-Filesystem-Eintrag in $fstab gefunden. Das Script wird abgebrochen."
+        exit $rERROR_NoRootEntryFstab
+    fi
 else
-    log "regular" "INFO" "Es wurde kein Eintrag für eine root-Partition gefunden"
-    # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
-    log "regular" "ERROR" "Kein Eintrag für root-Filesystem in $fstab gefunden. Script wird beendet."
-    echo "FEHLER: Kein root-Filesystem-Eintrag in $fstab gefunden. Das Script wird abgebrochen."
-    exit 2
+    log "regular" "ERROR" "Datei $fstab nicht vorhanden, Abbruch."
+    echo "FEHLER: Datei $fstab nicht vorhanden, Abbruch."
+    exit $rERROR_FileNotFound
 fi
 
 
@@ -556,8 +535,11 @@ fi
 # ======================================================
 
 x=$(echo -e "$nextLoop")
+
+log "regular" "DEBUG" "START Loop3 ===================================================================================="
 while read -r line 
 do
+    log "regular" "DEBUG" "-------------------- loop:"
     echo " ---> $line"
     lvmLvName=$(echo "$line" | awk '{print $1}')
     lvmLvSize=$(echo "$line" | awk '{print $2}')
@@ -567,6 +549,13 @@ do
     fsTempMountPoint="$mntDst$fsMountPoint"
     fsUUID=$(echo "$line" | awk '{print $6}')
     fsMapper=$(echo "$line" | awk '{print $7}')
+
+    lvmLvName=$(stripEmptyVars("$lvmLvName", "$filler"))  # reconvert in leeren String wenn erforderlich
+    lvmLvSize=$(stripEmptyVars("$lvmLvSize", "$filler"))
+    fsType=$(stripEmptyVars("$fsType", "$filler"))
+    fsMountPoint=$(stripEmptyVars("$fsMountPoint", "$filler"))
+    fsUUID=$(stripEmptyVars("$fsUUID", "$filler"))
+    fsMapper=$(stripEmptyVars("$fsMapper", "$filler"))
 
     # kein Mountpoint, dann auf "none" setzen (swap)
     if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
@@ -625,6 +614,7 @@ do
             $fsTabLine" $fstab
     fi
 done <<<"$x"
+log "regular" "DEBUG" "ENDE Loop3 ====================================================================================="
 
 
 # GRUB AKTUALISIEREN
