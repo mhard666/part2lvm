@@ -370,6 +370,7 @@ fi
 log "regular" "DEBUG" "mount $fsSourceRootPartition $mntSrc"
 mount "$fsSourceRootPartition" "$mntSrc"
 ### ToDo: Loggen der Mount-Ausgabe | grep $mntSrc
+log "regular" "DEBUG" "$(mount | grep $mntSrc)"
 
 # Jeden einzelnen Mountpoint im LVM mounten, Dateien syncen
 x=$(echo -e "$nextLoop")
@@ -520,6 +521,9 @@ if [ -f "$fstab" ]; then
         # ...und die Zeilennummer
         oldRootLine=$(echo $row | awk -F':' '{print $1}')
 
+        log "regular" "DEBUG" "oldRoot: .................................. $oldRoot"
+        log "regular" "DEBUG" "oldRootLine: .............................. $oldRootLine"
+
         # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
         sed "$oldRootLine c \
         # $oldRoot" $fstab
@@ -565,23 +569,41 @@ do
     fsMapper=$(stripEmptyVars "$fsMapper" "$filler")
 
     # kein Mountpoint, dann auf "none" setzen (swap)
-    ### ToDo: nächste Zeile ist obsolete
-    if [ "$fsMountPoint" == "" ]; then $fsMountPoint="none"; fi
+    if [ "$fsMountPoint" == "" ]; then 
+        log "regular" "INFO" "MountPoint ist leer, auf none setzen."
+        $fsMountPoint="none" 
+    fi
+
     fsOptions="defaults"
     fsDump="0"
     fsPass="2"
     isRoot="0"
+
+    log "regular" "DEBUG" "fsOptions: .............................. $fsOptions"
+    log "regular" "DEBUG" "fsDump: ................................. $fsDump"
+    log "regular" "DEBUG" "fsPass: ................................. $fsPass"
+    log "regular" "DEBUG" "isRoot: ................................. $isRoot"
+
     # bei swap-Filesystem Variablen $fsPass und $fsOptions abweichend vom Default-Wert belegen
     # bei root-Partition Variablen $fsPass und $fsOptions abweichend von Default-Wert belegen
     if [ "$fsType" == "swap" ] 
-    then 
+    then
+        log "regular" "INFO" "fsType is SWAP..." 
         fsOptions="sw" 
         fsPass="0"
+        
+        log "regular" "DEBUG" "fsOptions: .............................. $fsOptions"
+        log "regular" "DEBUG" "fsPass: ................................. $fsPass"
     elif [ "$fsMountPoint" == "/" ] 
     then
+        log "regular" "INFO" "Mountpoint is /..."
         fsOptions="errors=remount-ro"
         fsPass="1"
         isRoot="1"
+        
+        log "regular" "DEBUG" "fsOptions: .............................. $fsOptions"
+        log "regular" "DEBUG" "fsPass: ................................. $fsPass"
+        log "regular" "DEBUG" "isRoot: ................................. $isRoot"
     fi
 
     # <file system>                  <mount point>   <type>  <options>          <dump>  <pass>
@@ -607,14 +629,19 @@ do
     # fstab-Zeile bauen...
     fsTabLine="$fsMapper $fsMountPoint $fsType $fsOptions $fsDump $fsPass"
 
+    log "regular" "DEBUG" "<file system> <mount point>   <type>  <options>       <dump>  <pass>"
+    log "regular" "DEBUG" "$fsTabLine"
+
     # Prüfen ob root-Partition - dann unterhalb der auskommentierten Zeile einfügen    
     if [ "$isRoot" == "1" ]
     then
-        # neue UID der root part anfügen
+        log "regular" "INFO" "Mountpoint für Root Partition..."
+        # neue UID unter der der auskommentierten, alten root partition anfügen
         sed "$oldRootLine a \
             $fsTabLine" $fstab
     # sonst ist es keine root-Partition - dann am Ende der Datei einfügen...
     else
+        log "regular" "INFO" "keine Root Partition..."
         # Anzahl Zeilen ermitteln = letzte Zeile
         lastRowLine=$(cat $fstab | wc -l)
         # neue UID der xxx part anfügen
@@ -631,39 +658,48 @@ log "regular" "DEBUG" "ENDE Loop3 ==============================================
 # /boot mounten...
 ### ToDo: Verzeichnis erstellen prüfen etc.
 dstBoot="/mnt/dst/boot"
-        # Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
-        pathExistsOrCreate $dstBoot
-        result=$?
-        if [ $result -eq 0 ]; then
-            # Rückgabewert 0 - Ok
-            echo "true"
-        else
-            # Rückgabewert 1 und höher - Fehler
-            echo "$result - Abbruch"
-            exit $result
-        fi
 
-        # Prüfen ob der Mountpoint leer ist
-        pathEmptyOrDelContent $dstBoot
-        result=$?
-        if [ $result -eq 0 ]; then
-            # Rückgabewert 0 - Ok
-            echo "0"
-        elif [ $result -eq $rWARNING_PathNotEmpty ]; then
-            # Rückgabewert 1 - Fehler, Verzeichnis nicht leer - Abfrage Abbruch/Weiter
-            echo "$result - Path not empty"
-            ### ToDo: Abfrage bei Fehler ob weiter oder Abbruch
-        else
-            # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe - Abbruch
-            echo "$result - Abbruch"
-            exit $result
-        fi
+# Prüfen ob Mountpoint vorhanden, wenn nicht Verzeichnis anlegen, wenn ja, 
+pathExistsOrCreate $dstBoot
+result=$?
+if [ $result -eq 0 ]; then
+    log "result" "INFO" "MountPoint $dstBoot ist vorhanden..."
+    # Rückgabewert 0 - Ok
+    echo "true"
+else
+    log "regular" "ERROR" "MountPoint $dstBoot ist nicht vorhanden und konnte auch nicht angelegt werden."
+    # Rückgabewert 1 und höher - Fehler
+    echo "$result - Abbruch"
+    exit $result
+fi
 
+# Prüfen ob der Mountpoint leer ist
+pathEmptyOrDelContent $dstBoot
+result=$?
+if [ $result -eq 0 ]; then
+    log "regular" "INFO" "MountPoint $dstBoot enthält keine Dateien oder Verzeichnisse."
+    # Rückgabewert 0 - Ok
+    echo "0"
+elif [ $result -eq $rWARNING_PathNotEmpty ]; then
+    log "regular" "WARNING" "MountPoint $dstBoot enthält Daten und diese konnten auch nicht gelöscht werden."
+    # Rückgabewert 1 - Fehler, Verzeichnis nicht leer - Abfrage Abbruch/Weiter
+    echo "$result - Path not empty"
+    ### ToDo: Abfrage bei Fehler ob weiter oder Abbruch
+else
+    # Rückgabewert 2 oder höher - Fehler bei Parameterübergabe - Abbruch
+    log "regular" "ERROR" "Sonstiger Fehler - Abbruch."
+    echo "$result - Abbruch"
+    exit $result
+fi
 
 mount "$fsSourceBootPartition" "$dstBoot"
+log "regular" "DEBUG" "$(mount | grep $dstBoot)"
 
 # Mounten der kritischen virtuellen Dateisysteme
-for i in /dev /dev/pts /proc /sys /run; do mount -B $i /mnt/dst$i; done
+for i in /dev /dev/pts /proc /sys /run; do 
+    mount -B $i /mnt/dst$i
+    log "regular" "DEBUG" "$(mount | grep /mnt/dst$i)" 
+done
 
 # Chroot into your normal system device:
 chroot /mnt/dst
