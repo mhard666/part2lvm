@@ -479,7 +479,7 @@ done <<<"$x"
 log "regular" "INFO" "ENDE Loop2 ======================================================================================"
 
 echo "Taste drücken..."
-read $x
+read key
 
 
 # FSTAB IM NEUEN ROOT ANPASSEN
@@ -501,7 +501,7 @@ if [ -f "$fstab" ]; then
         # Abfrage mit option zu beenden...
         log "regular" "WARN" "Keine boot Partiton gefunden"
         echo -n "WARNUNG: Es wurde kein /boot-Partition-Eintrag in der Datei /etc/fstab gefunden. Vermutlich befinden sich die Dateien unterhalb von /. Soll das Script trotzdem fortgesetzt werden [J/N]? "
-        read $x
+        read key
         ### ToDo: Abfrage...
     fi
 
@@ -583,7 +583,7 @@ do
     # kein Mountpoint, dann auf "none" setzen (swap)
     if [ "$fsMountPoint" == "" ]; then 
         log "regular" "INFO" "MountPoint ist leer, auf none setzen."
-        $fsMountPoint="none" 
+        fsMountPoint="none" 
     fi
 
     fsOptions="defaults"
