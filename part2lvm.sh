@@ -537,6 +537,8 @@ if [ -f "$fstab" ]; then
         sed "$oldRootLine c \
         # $oldRoot" $fstab > tmp
         mv tmp $fstab
+        fstext=$(cat $fstab)
+        log "regular" "DEBUG" "$fstext"
 
 
     else
