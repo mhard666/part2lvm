@@ -525,8 +525,20 @@ if [ -f "$fstab" ]; then
         log "regular" "DEBUG" "oldRootLine: .............................. $oldRootLine"
 
         # ersetzen von Zeile $oldRootLine mit '# $oldRoot'
-        sed "$oldRootLine c \
-        # $oldRoot" $fstab
+        # nur anzeigen!
+        ## sed "$oldRootLine c \
+        ## # $oldRoot" $fstab
+
+        # pipen (funktioniert evtl nicht!)
+        cat $fstab | sed "$oldRootLine c \
+        # $oldRoot" > $fstab
+
+        # in temporäre Datei schreiben und diese in die Originaldatei moven
+        ## sed "$oldRootLine c \
+        ## # $oldRoot" $fstab > tmp
+        ## mv tmp $fstab
+
+
     else
         log "regular" "INFO" "Es wurde kein Eintrag für eine root-Partition gefunden"
         # wenn keine root-Partition vorhanden ist: Fehler und Abbruch.
