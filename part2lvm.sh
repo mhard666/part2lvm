@@ -530,13 +530,13 @@ if [ -f "$fstab" ]; then
         ## # $oldRoot" $fstab
 
         # pipen (funktioniert evtl nicht!)
-        cat $fstab | sed "$oldRootLine c \
-        # $oldRoot" > $fstab
+        ## cat $fstab | sed "$oldRootLine c \
+        ## # $oldRoot" > $fstab
 
         # in temporäre Datei schreiben und diese in die Originaldatei moven
-        ## sed "$oldRootLine c \
-        ## # $oldRoot" $fstab > tmp
-        ## mv tmp $fstab
+        sed "$oldRootLine c \
+        # $oldRoot" $fstab > tmp
+        mv tmp $fstab
 
 
     else
