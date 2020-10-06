@@ -721,7 +721,7 @@ for i in /dev /dev/pts /proc /sys /run; do
 done
 
 # Chroot into your normal system device:
-chroot /mnt/dst
+chroot /mnt/dst /bin/bash <<EOF
 
 # Reinstall GRUB 2 
 grub-install "$fsSourceBootDrive"
@@ -729,5 +729,7 @@ grub-install "$fsSourceBootDrive"
 # Recreate the GRUB 2 menu file (grub.cfg)
 update-grub
 
+EOF
+
 # Exit chroot: CTRL-D on keyboard
-exit
+# exit
