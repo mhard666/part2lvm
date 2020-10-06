@@ -534,9 +534,11 @@ if [ -f "$fstab" ]; then
         ## # $oldRoot" > $fstab
 
         # in temporäre Datei schreiben und diese in die Originaldatei moven
-        sed "$oldRootLine c \
-        # $oldRoot" $fstab > tmp
-        mv tmp $fstab
+        fstext=$(cat $fstab)
+        
+        echo $fstext | sed "$oldRootLine c \
+        # $oldRoot" > $fstab
+        # mv tmp $fstab
         fstext=$(cat $fstab)
         log "regular" "DEBUG" "$fstext"
 
