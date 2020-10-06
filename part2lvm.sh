@@ -529,16 +529,11 @@ if [ -f "$fstab" ]; then
         ## sed "$oldRootLine c \
         ## # $oldRoot" $fstab
 
-        # pipen (funktioniert evtl nicht!)
-        ## cat $fstab | sed "$oldRootLine c \
-        ## # $oldRoot" > $fstab
-
         # in temporäre Datei schreiben und diese in die Originaldatei moven
         fstext=$(cat $fstab)
         
         echo $fstext | sed "$oldRootLine c \
-        # $oldRoot" > $fstab
-        # mv tmp $fstab
+            # $oldRoot" > $fstab
         fstext=$(cat $fstab)
         log "regular" "DEBUG" "$fstext"
 
@@ -561,6 +556,7 @@ fi
 # ======================================================
 
 x=$(echo -e "$nextLoop")
+fstext=$(cat "$fstab")
 
 log "regular" "DEBUG" "START Loop3 ===================================================================================="
 while read -r line 
@@ -653,16 +649,22 @@ do
     then
         log "regular" "INFO" "Mountpoint für Root Partition..."
         # neue UID unter der der auskommentierten, alten root partition anfügen
-        sed "$oldRootLine a \
-            $fsTabLine" $fstab
+        echo $fstext | sed "$oldRootLine a \
+            $fsTabLine" > $fstab
+        fstext=$(cat "$fstab")
+        log "regular" "DEBUG" "$fstext"
+
     # sonst ist es keine root-Partition - dann am Ende der Datei einfügen...
     else
         log "regular" "INFO" "keine Root Partition..."
         # Anzahl Zeilen ermitteln = letzte Zeile
         lastRowLine=$(cat $fstab | wc -l)
         # neue UID der xxx part anfügen
-        sed "$lastRowLine a \
-            $fsTabLine" $fstab
+        echo $fstext | sed "$lastRowLine a \
+            $fsTabLine" > $fstab
+        fstext=$(cat "$fstab")
+        log "regular" "DEBUG" "$fstext"
+
     fi
 done <<<"$x"
 log "regular" "DEBUG" "ENDE Loop3 ====================================================================================="
