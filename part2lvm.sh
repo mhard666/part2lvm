@@ -530,9 +530,8 @@ if [ -f "$fstab" ]; then
         ## # $oldRoot" $fstab
 
         # in temporäre Datei schreiben und diese in die Originaldatei moven
-        fstext=$(cat $fstab)
-        
-        echo $fstext | sed "$oldRootLine c \
+        cp $fstab fstab.tmp
+        cat fstab.tmp | sed "$oldRootLine c \
             # $oldRoot" > $fstab
         fstext=$(cat $fstab)
         log "regular" "DEBUG" "$fstext"
@@ -649,7 +648,8 @@ do
     then
         log "regular" "INFO" "Mountpoint für Root Partition..."
         # neue UID unter der der auskommentierten, alten root partition anfügen
-        echo $fstext | sed "$oldRootLine a \
+        cp $fstab fstab.tmp
+        cat fstab.tmp | sed "$oldRootLine a \
             $fsTabLine" > $fstab
         fstext=$(cat "$fstab")
         log "regular" "DEBUG" "$fstext"
@@ -660,7 +660,8 @@ do
         # Anzahl Zeilen ermitteln = letzte Zeile
         lastRowLine=$(cat $fstab | wc -l)
         # neue UID der xxx part anfügen
-        echo $fstext | sed "$lastRowLine a \
+        cp $fstab fstab.tmp
+        cat fstab.tmp | sed "$lastRowLine a \
             $fsTabLine" > $fstab
         fstext=$(cat "$fstab")
         log "regular" "DEBUG" "$fstext"
