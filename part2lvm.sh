@@ -729,3 +729,4 @@ grub-install "$fsSourceBootDrive"
 update-grub
 
 # Exit chroot: CTRL-D on keyboard
+exit
