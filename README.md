@@ -12,13 +12,13 @@ Gebootet wird von einem Live-System. Mittels gparted ist vor dem Start des Scrip
 
 ## Script-Ablauf
 
-. Es wird die Datenstruktur für das neu zu erstellende lvm als mehrzeilige Variable im Script hinterlegt
-. Im ersten Schritt legt das Script in der benannten Partition die Bestandteile des LVM an, erst das Physical Volume, dann die Volume Group und anschließend über die mehrzeilige Variable iterierend die Logical Volumes.
-. Im nächsten Schritt werden die LVs gemounted und die Daten von den Quellverzeichnissen in die Zielverzeichnisse gesynct
-. In Script part2lvmKR werden dann die Dateien in den Quellverzeichnissen gelöscht (dieser Schritt entfällt bei part2lvm, da hier abschließend die gesamte alte Partition gelöscht wird)
-. Weiter werden die neuen Mountpoints in die fstab eingetragen
-. In part2lvm wird die Quellpartition gelöscht (ToDo)
-. Abschließend wird der Bootloader neu geschrieben.
+* Es wird die Datenstruktur für das neu zu erstellende lvm als mehrzeilige Variable im Script hinterlegt
+* Im ersten Schritt legt das Script in der benannten Partition die Bestandteile des LVM an, erst das Physical Volume, dann die Volume Group und anschließend über die mehrzeilige Variable iterierend die Logical Volumes.
+* Im nächsten Schritt werden die LVs gemounted und die Daten von den Quellverzeichnissen in die Zielverzeichnisse gesynct
+* In Script part2lvmKR werden dann die Dateien in den Quellverzeichnissen gelöscht (dieser Schritt entfällt bei part2lvm, da hier abschließend die gesamte alte Partition gelöscht wird)
+* Weiter werden die neuen Mountpoints in die fstab eingetragen
+* In part2lvm wird die Quellpartition gelöscht (ToDo)
+* Abschließend wird der Bootloader neu geschrieben.
 
 ## Sonstiges
 
