@@ -576,7 +576,10 @@ read key
 # FSTAB ANPASSEN
 # ============================
 
-fstab="$mntDst/etc/fstab"
+# Hier Original fstab zuweisen, nicht in der Kopie, da root und damit /etc nicht verschoben werden
+# fstab="$mntDst/etc/fstab"
+fstab="$mntSrc/etc/fstab"
+
 log "regular" "DEBUG" "fstab: ....................... $fstab"
 
 # prüfen, ob fstab am angegebenen Ort existiert...
