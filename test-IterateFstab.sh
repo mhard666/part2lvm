@@ -4,6 +4,7 @@
 #
 # iteriert die fstab um alle Einträge zu mounten
 #
+# v. 0.1.1  - 20210121. - mh    - getFstab hinzugefügt
 # v. 0.0.1  - 20200811  - mh    - initiale Version
 #
 # Author: Mirko Härtwig
