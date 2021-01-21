@@ -8,6 +8,79 @@
 #
 # Author: Mirko Härtwig
 
+# rERROR_xxx : return Codes ERROR ab 2000
+rERROR_RunNotAsRoot=2000
+rERROR_WrongParameters=2001
+rERROR_FileNotFound=2002
+rERROR_PathNotExist=2010
+rERROR_IncludingFail=2011
+rERROR_NoRootEntryFstab=2012
+
+# =========================================================
+# Funktion:     getFstab()
+# Aufgabe:      holt /etc/fstab von der root-Partition
+#               und legt sie im Live-System ab. Dazu wird
+#               die root-Partition gemounted, die Datei
+#               kopiert, anschließend die root-Partition
+#.              wieder dismounted
+# Parameter:    $1 root-Partition
+#               $2 Mountpoint
+#               $3 Zielverzeichnis
+# Return:       0:    Ok
+#               2001: Wenn Fehler in Parameterübergabe
+# Echo:         String
+# =========================================================
+function getFstab {
+    # Parameter prüfen
+    if [ $# -lt 3 ]
+    then
+        log "regular" "ERROR" "FUNC: mountFstab(): Fehler bei Parameterübergabe"
+        return $rERROR_WrongParameters
+    fi
+
+    # Übergabeparameter abholen
+    gF_root=$1
+    gF_mountpoint=$2
+    gF_destination=$3
+
+    # Prüfen, ob Mountpoint existiert
+    if [ -d $gF_mountpoint ]; then
+
+        # Verzeichnis für Mountpoint existiert -> root mounten
+        mount $gF_root $gF_mountpoint
+
+        # Prüfen, ob das Zielverzeichnis existiert
+        if [ -d $gF_destination ]; then
+
+            # Zielverzeichnis existiert -> Prüfen, ob fstab existiert
+            if [ -f "$gF_mountpoint/etc/fstab" ]; then
+
+                # fstab vorhanden -> fstab kopieren
+                cp "$gF_mountpoint/etc/fstab" "$gF_destination"
+
+                # und root dismounten
+                umount $gF_root
+            else
+
+                # fstab nicht gefunden
+                echo "fstab nicht gefunden"
+                return $rERROR_FileNotFound
+            fi
+        else
+
+            # Zielverzeichnis nicht vorhanden
+            echo "Zielverzeichnis nicht vorhanden"
+            return $rERROR_PathNotExist
+        fi
+    else
+
+        # Mountpoint nicht vorhanden
+        echo "Mountpoint nicht vorhanden"
+        return $rERROR_PathNotExist
+    fi
+    return 0
+}
+
 
 # =========================================================
 # Funktion:     mountFstab()
@@ -16,8 +89,8 @@
 #               Mountpoint
 # Parameter:    $1 Pfad zur fstab
 #               $2 Mountpoint
-# Return:       0: Ok
-#               2: Wenn Fehler in Parameterübergabe
+# Return:       0:    Ok
+#               2001: Wenn Fehler in Parameterübergabe
 # Echo:         String
 # =========================================================
 function mountFstab {
@@ -66,7 +139,7 @@ function mountFstab {
         if [ "$uuid" != "" ]; then
 
             # wenn $uuid einen Wert enthält (eine UUID) -> prüfen, ob für diese UUID ein Gerät existiert
-            if [ -h /dev/disk/by-uuid/$uuid ];then
+            if [ -h /dev/disk/by-uuid/$uuid ]; then
 
                 # Gerät existiert, mit UUID mounten
                 echo $(grep $uuid /etc/fstab)  ..... found, mounting
@@ -82,8 +155,7 @@ function mountFstab {
             echo "mount $device $mF_mountpoint$mountpoint"
         fi
     done <<<"$line"
-
-
+    return 0
 }
 
 mountFstab "/etc/fstab" "/mnt/src"
