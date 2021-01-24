@@ -52,7 +52,7 @@ case "${LOGTYPE}" in
     if [ ${LOGLID} -ge ${LOGLEVEL} ]; then
         # Logfile or STDOUT
         if [ ${ENABLE_LOG} -eq 1 ] ;then
-            echo "###################################################" >>${LOGFILE}
+            echo "================================================================================" >>${LOGFILE}
             echo "$(date +%Y_%m_%d-%H:%M:%S) ${LOGLEVELID}  ${LOGMSG}" >>${LOGFILE}
         else
             echo "$(date +%Y_%m_%d-%H:%M:%S) ${LOGLEVELID}  ${LOGMSG}";
@@ -63,8 +63,8 @@ case "${LOGTYPE}" in
     if [ ${LOGLID} -ge ${LOGLEVEL} ]; then
         # Logfile or STDOUT
         if [ ${ENABLE_LOG} -eq 1 ] ;then
-            echo "—————————————————" >>${LOGFILE}
             echo "$(date +%Y_%m_%d-%H:%M:%S) ${LOGLEVELID}  ${LOGMSG}" >>${LOGFILE}
+            echo "--------------------------------------------------------------------------------" >>${LOGFILE}
         else
             echo "$(date +%Y_%m_%d-%H:%M:%S) ${LOGLEVELID}  ${LOGMSG}";
         fi
