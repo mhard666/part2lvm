@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # part2lvmSP.sh
-# v. 1.0.0  - 20210117. - mh    - part2lvmSP (Single Partition) - verschiebt ein Verzeichnis in ein Logical Volume
+# v. 1.0.1  - 20210124  - mh    - logischer Ablauf vollständig
+# v. 1.0.0  - 20210117  - mh    - part2lvmSP (Single Partition) - verschiebt ein Verzeichnis in ein Logical Volume
 #                                 und passt die fstab in der root-Partition an
 #                                 komplette Neuentwicklung   
 # v. 0.0.2  - 20200811  - mh    - LVM einrichtung vollständig, ungetestet
@@ -26,6 +27,54 @@
 # # ...
 # Funktionsaufruf Var1 Var2 Var2 ...
 
+# =================================================================================================
+# Konstanten
+# =================================================================================================
+# rWARNING_xxx : return Codes WARNING ab 1000 (Globale Fehlercodes)
+# rWARNING_xxx : return Codes WARNING ab 1500 (Script-spezifische Fehlercodes)
+
+# rERROR_xxx : return Codes ERROR ab 2000 (Globale Fehlercodes)
+rERROR_IncludingFail=2011
+
+# rERROR_xxx : return Codes ERROR ab 2500 (Script-spezifische Fehlercodes)
+
+
+# ================================================================================================
+# part2lvm-utils.sh einbinden...
+# ================================================================================================
+
+if [ -f ./part2lvm-utils.sh ] ;then
+    . ./part2lvm-utils.sh
+else
+    echo "ERROR: ./part2lvm-utils.sh not available"
+    exit $rERROR_IncludingFail
+fi
+
+
+# =================================================================================================
+# Logging - Einstellungen überschreiben
+# =================================================================================================
+
+LOGLEVEL="0"
+ENABLE_LOG="1"
+#Rund in Logging / Debug Mode only, means to print out log messages to STDOUT
+DEBUG=0
+LOGDIR="$(pwd)/log"
+LOGFILE="$LOGDIR/$(date +%Y%m%d-%H%M%S)_part2lvmSP.log"
+
+
+# =================================================================================================
+# auf root-Recht prüfen
+# =================================================================================================
+
+checkRoot
+result=$?
+# Prüfen, ob $result -not_equal 0 (nicht root)
+if [ $result -ne 0 ]; then
+
+    # checkRoot hat nicht 0 zurückgegeben -> nicht root -> Abbruch
+    exit $result
+fi
 
 ### ===============================================================================================
 ### pv anlegen
@@ -121,72 +170,39 @@ if [ "swap" != "swap" ]; then
     # ToDo: Quell-Dateisystem komplett aus der fstab ermitteln und mounten! Damit ist parent
     #       obsolete.
 
-    # Prüfen, ob der Mountpoint existiert, ggf. anlegen
-    # varname:      /mnt/src
-    pathExistsOrCreate "/mnt/src"
-    result=$?
-    if [ $result -eq 0 ]; then
-
-        # Rückgabewert 0 -> Verzeichnis existiert oder wurde angelegt
-    else
-
-        # Rückgabewert > 0 -> Fehler beim Anlegen des Verzeichnisses -> Abbruch
-        exit 1
-    fi
-
-    # Prüfen ob Mountpoint leer ist, ggf. löschen
-    # varname:      /mnt/src
-    pathEmptyOrDelContent "/mnt/src"
-    result=$?
-    if [ $result -eq 0 ]; then
-
-        # Rückgabewert 0 -> Verzeichnis existiert oder wurde angelegt
-    elif [ $result -eq $rWARNING_PathNotEmpty ]; then
-
-        # Rückgabewert = $rWARNING_PathNotEmpty -> Abfrage Abbruch/Weiter (wenn weiter, wird trotzdem 
-        # in das Verzeichnis gemounted)
-
-        # ToDo: Abfrage Abbruch/Weiter
-    else
-
-        # Anderer Rückgabewert > 0 -> Fehler aufgetreten -> Abbruch
-        exit 1
-    fi
-
     # Mounten
     # varname:      /dev/sda2       Quell-Partition
     # varname:      /mnt/src
-    mount "/dev/sda2" "/mnt/src"
+    prepareMountAndTest "/dev/sda2" "/mnt/src"
     result=$?
     if [ $result -eq 0 ]; then
 
-        # Rückgabewert 0 -> erfolgreich gemounted -> Gegenprüfung
-
-        # ToDo: Gegenprüfung
+        # Rückgabewert 0 -> erfolgreich gemounted
+        echo "toll - Source gemounted"
     else
 
         # Rückgabewert > 0 -> Fehler beim Mounten der Source Partition -> Abbruch
+        exit $result
     fi
 
     ### ===========================================================================================
     ### Ziel-Dateisystem mounten
 
-    # ToDo Analog Source...
+    # Mounten
+    # varname:      vg_debian
+    # varname:      lv_home
+    # varname:      /dev/mapper/vg_debian-lv_home       Ziel-Partition
+    # varname:      /mnt/dst
+    prepareMountAndTest "/dev/mapper/vg_debian-lv_home" "/mnt/dst"
+    result=$?
+    if [ $result -eq 0 ]; then
 
-    ### ===========================================================================================
-    ### Eltern-Dateisystem mounten
-
-    # Prüfen, ob Parent = Source
-    # varname:      /dev/sda2       (parent)
-    # varname:      /dev/sda2       (source)
-    if [ "/dev/sda2" != "/dev/sda2" ]; then
-
-        # Parent != Source -> Parent mounten
-
-        # ToDo: Analog Source
+        # Rückgabewert 0 -> erfolgreich gemounted
+        echo "toll - Ziel erfolgreich gemounted"
     else
 
-        # Parent == Source -> nichts mounten
+        # Rückgabewert > 0 -> Fehler, Abbruch
+        exit $result
     fi
 
     ### ===========================================================================================
@@ -202,7 +218,7 @@ if [ "swap" != "swap" ]; then
         # varname:      /mnt/src        (source)
         # varname:      /home           (mountpoint)
         # varname:      /mnt/dst        (destination)
-        rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "/mnt/src/home" "/mnt/dst/home"
+        rsync -aAXv --exclude=/lost+found --exclude=/root/trash/* --exclude=/var/tmp/* "/mnt/src/home" "/mnt/dst"
         result=$?
         if [ $result -eq 0 ]; then
 
@@ -214,12 +230,153 @@ if [ "swap" != "swap" ]; then
         fi
     fi
 
+
     ### ===========================================================================================
-    ### Mountpoint im Parent anlegen/leeren
+    ### Destination dismounten
+
+    # Ziel-Mountpoint dismounten
+    # varname:      vg_debian
+    # varname:      lv_home
+    # varname:      /dev/mapper/vg_debian-lv_home       Ziel-Partition
+    # varname:      /mnt/dst
+    umount "/mnt/dst"
+    result=$?
+    if [ $result -eq 0 ]; then
+
+        # Rückgabewert 0 -> Befehlt erfolgreich ausgeführt -> Ergebnis gegenprüfen
+        found=$(mount | grep "/mnt/dst " | grep "/dev/mapper/vg_debian-lv_home ")
+        if [ "$found" == "" ]; then
+
+            # keinen Mount-Eintrag gefunden -> erfolgreich dismounted
+            echo "toll - Dismount erfolgreich"
+        else
+
+            # Mount-Eintrag gefunden -> Dismount nicht erfolgreich -> Abbruch
+            echo "mist"
+            exit 1
+        fi
+    else
+
+        # Rückgabewert > 0 -> fehler beim dismount
+        echo "mist"
+        exit 1
+    fi
 
 
+    ### ===========================================================================================
+    ### Neues LV in die Source-Partition einhängen, der Mountpoint wird dabei ggf. angelegt/geleert
 
+    # Das neue LV wird an dem Mountpoint auf der Source-Partition eingehängt. Der Mountpoint wird 
+    # vorher angelegt und/bzw. geleert
+
+    # Mounten
+    # varname:      vg_debian
+    # varname:      lv_home
+    # varname:      /dev/mapper/vg_debian-lv_home       Ziel-Partition
+    # varname:      /mnt/src
+    # varname:      /home
+    # varname:      /mnt/src/home
+    prepareMountAndTest "/dev/mapper/vg_debian-lv_home" "/mnt/src/home"
+    result=$?
+    if [ $result -eq 0 ]; then
+
+        # Rückgabewert 0 -> erfolgreich gemounted
+        echo "toll - Ziel erfolgreich gemounted"
+    else
+
+        # Rückgabewert > 0 -> Fehler, Abbruch
+        exit $result
+    fi
 fi
 ### -----------------------------------------------------------------------------------------------
 
-# fstab eintragen
+
+### ===============================================================================================
+### fstab eintragen
+
+# Hat soweit alles funktioniert, wird ein Eintrag in der fstab angelegt...
+
+# Variablen vorbelegen
+fsOptions="defaults"
+fsDump="0"
+fsPass="2"
+isRoot="0"
+
+# bei swap-Filesystem Variablen $fsPass und $fsOptions abweichend vom Default-Wert belegen
+# bei root-Partition Variablen $fsPass und $fsOptions abweichend von Default-Wert belegen
+if [ "$fsType" == "swap" ]; then
+
+    log "regular" "INFO" "fsType is SWAP..." 
+    fsOptions="sw" 
+    fsPass="0"
+    
+    log "regular" "DEBUG" "fsOptions: .............................. $fsOptions"
+    log "regular" "DEBUG" "fsPass: ................................. $fsPass"
+elif [ "$fsMountPoint" == "/" ]; then
+
+    log "regular" "INFO" "Mountpoint is /..."
+    fsOptions="errors=remount-ro"
+    fsPass="1"
+    isRoot="1"
+    
+    log "regular" "DEBUG" "fsOptions: .............................. $fsOptions"
+    log "regular" "DEBUG" "fsPass: ................................. $fsPass"
+    log "regular" "DEBUG" "isRoot: ................................. $isRoot"
+fi
+
+# <file system>                  <mount point>   <type>  <options>          <dump>  <pass>
+# /dev/mapper/debian--vg-root    /               ext4    errors=remount-ro  0       1
+# /dev/mapper/debian--vg-home    /home           ext4    defaults           0       2
+# /dev/mapper/debian--vg-tmp     /tmp            ext4    defaults           0       2
+# /dev/mapper/debian--vg-var     /var            ext4    defaults           0       2
+# /dev/mapper/debian--vg-swap_1  none            swap    sw                 0       0
+
+# <file system> <mount point>   <type>  <options>       <dump>  <pass>
+#           1   1     2         3       3 4         5   5     6 6       7
+# 0....5....0...45....0....5....0....5..8.0....5....0...45....0.2..5....0
+# 13            15              7       15              7       6
+
+# Variablenlänge formatieren...
+fsMapper=$(printf "%-13s" $fsMapper)
+fsMountPoint=$(printf "%-15s" $fsMountPoint)
+fsType=$(printf "%-7s" $fsType)
+fsOptions=$(printf "%-15s" $fsOptions)
+fsDump=$(printf "%-7s" $fsDump)
+# fsPass=$(printf "%-16s" $fsPass)
+
+# fstab-Zeile bauen...
+fsTabLine="$fsMapper $fsMountPoint $fsType $fsOptions $fsDump $fsPass"
+
+log "regular" "DEBUG" "<file system> <mount point>   <type>  <options>       <dump>  <pass>"
+log "regular" "DEBUG" "$fsTabLine"
+
+# fstab in eine temporäre Datei kopieren
+cp $fstab fstab.tmp
+
+# Prüfen, ob root-Partition    
+if [ "$isRoot" == "1" ]; then
+
+    # Ist root-Partition -> unterhalb der auskommentierten Zeile einfügen (OBSOLETE!!!)
+    log "regular" "INFO" "Mountpoint für Root Partition..."
+    # neue UID unter der der auskommentierten, alten root partition anfügen
+    
+    cat fstab.tmp | sed "$oldRootLine a \
+        $fsTabLine" > $fstab
+    fstext=$(cat "$fstab")
+    log "regular" "DEBUG" "$fstext"
+else
+
+    # Keine root-Partition -> am Ende der Datei einfügen
+    log "regular" "INFO" "keine Root Partition..."
+    # Anzahl Zeilen ermitteln = letzte Zeile
+    lastRowLine=$(cat $fstab | wc -l)
+    # neue UID der xxx part anfügen
+    
+    cat fstab.tmp | sed "$lastRowLine a \
+        $fsTabLine" > $fstab
+    fstext=$(cat "$fstab")
+    log "regular" "DEBUG" "$fstext"
+fi
+
+# temporäre fstab löschen
+del fstab.tmp
