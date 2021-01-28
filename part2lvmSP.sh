@@ -51,6 +51,18 @@ else
 fi
 
 
+# ================================================================================================
+# part2lvm-vars.sh einbinden...
+# ================================================================================================
+
+if [ -f ./part2lvm-vars.sh ] ;then
+    . ./part2lvm-vars.sh
+else
+    echo "ERROR: ./part2lvm-vars.sh not available"
+    exit $rERROR_IncludingFail
+fi
+
+
 # =================================================================================================
 # Logging - Einstellungen überschreiben
 # =================================================================================================
@@ -80,29 +92,43 @@ fi
 ### pv anlegen
 
 # Prüfen, ob PV an /dev/sda3 existiert
-result=$(pvdisplay | grep 'PV Name' | grep '/dev/sda3')
-if [ $result == "" ]; then
+# devPhysicalVolume:        /dev/sda3
+pv=$(pvdisplay | grep 'PV Name' | grep "$devPhysicalVolume")
+if [ $pv == "" ]; then
 
     # leer -> PV nicht gefunden -> PV muss angelegt werden
-    # varname:      /dev/sda3
-    pvcreate "/dev/sda3"
+    # devPhysicalVolume:        /dev/sda3
+    pvcreate "$devPhysicalVolume"
+    result=$?
+    # Prüfen, ob $result -not_equal 0 (Fehler beim Anlegen des PV)
+    if [ $result -ne 0 ]; then
 
-    # ToDo: Rückgabewert prüfen!
+        # pvcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
+        Log "regular" "ERROR" "main: ................................. Fehler $result (pvcreate)"
+        exit $result
+    fi
 fi
 
 ### ===============================================================================================
 ### vg anlegen
 
 # Prüfen, ob VG vg_debian existiert
-result=$(vgdisplay | grep 'VG Name' | grep 'vg_debian')
-if [ $result == "" ]; then
+# lvmVolumeGroup:           vg_debian
+vg=$(vgdisplay | grep 'VG Name' | grep "$lvmVolumeGroup")
+if [ $vg == "" ]; then
 
     # leer -> VG nicht gefunden -> VG muss angelegt werden
-    # varname:      /dev/sda3
-    # varname:      vg_debian
-    vgcreate "vg_debian" "/dev/sda3"
+    # devPhysicalVolume:        /dev/sda3
+    # lvmVolumeGroup:           vg_debian
+    vgcreate "$lvmVolumeGroup" "$devPhysicalVolume"
+    result=$?
+    # Prüfen, ob $result -not_equal 0 (Fehler beim Anlegen der VG)
+    if [ $result -ne 0 ]; then
 
-    # ToDo: Rückgabewert prüfen!
+        # vgcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
+        Log "regular" "ERROR" "main: ................................. Fehler $result (vgcreate)"
+        exit $result
+    fi
 else
 
     # nicht leer -> VG vorhanden -> VG nicht anlegen, aber prüfen, dass in /dev/sda3 angelegt
@@ -114,58 +140,82 @@ fi
 ### lv anlegen
 
 # Prüfen, ob LV lv_home existiert
-result=$(lvdisplay | grep 'LV Name' | grep 'lv_home')
-if [ $result == "" ], then
+# lvmLogicalVolume:      lv_home
+lv=$(lvdisplay | grep 'LV Name' | grep "$lvmLogicalVolume")
+if [ $lv == "" ], then
 
     # leer -> LV nicht gefunden -> LV muss angelegt werden
-    # varname:      20G
-    # varname:      lv_home
-    # varname:      vg_debian
-    lvcreate -L "20G" -n "lv_home" "vg_debian"
+    # lvmSize:              20G
+    # lvmLogicalVolume:     lv_home
+    # lvmVolumeGroup:       vg_debian
+    lvcreate -L "$lvmSize" -n "$lvmLogicalVolume" "$lvmVolumeGroup"
+    result=$?
+    # Prüfen, ob $result -not_equal 0 (Fehler beim Anlegen des LV)
+    if [ $result -ne 0 ]; then
 
-    # ToDo: Rückgabewert prüfen!
+        # lvcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
+        Log "regular" "ERROR" "main: ................................. Fehler $result (lvcreate)"
+        exit $result
+    fi
 else
 
     # nicht leer -> LV vorhanden -> LV nicht anlegen, aber prüfen, dass in vg_debian angelegt
 
     # ToDo: Prüfung -> sonst Hinweis und Abbruch
+fi
 
 ### ===============================================================================================
 ### Dateisystem anlegen
 
 # Prüfen des Dateisystemtyps
-# varname:      ext4
-if [ "ext4" == "ext4" ]; then
+# fsType:      ext4
+if [ "$fsType" == "ext4" ]; then
 
     # Dateisystem = ext4 -> ext4 auf dem LV anlegen
-    # varname:      vg_debian
-    # varname:      lv_home
-    mkfs.ext4 "/dev/vg_debian/lv_home"
+    # lvmVolumeGroup:      vg_debian
+    # lvmLogicalVolume:    lv_home
+    mkfs.ext4 "/dev/$lvmVolumeGroup/$lvmLogicalVolume"
+    result=$?
+    # Prüfen, ob $result -not_equal 0 (Fehler beim Anlegen des Dateisystems)
+    if [ $result -ne 0 ]; then
 
-    # ToDo: Rückgabewert prüfen!
-elif [ "$var" == "swap" ]; then
+        # mkfs.ext4 hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
+        Log "regular" "ERROR" "main: ................................. Fehler $result (mkfs.ext4)"
+        exit $result
+    fi
+elif [ "$fsType" == "swap" ]; then
 
     # Dateisystem = swap -> swap auf dem LV anlegen
-    # varname:      vg_debian
-    # varname:      lv_swap
-    mkswap "/dev/vg_debian/lv_swap"
+    # lvmVolumeGroup:      vg_debian
+    # lvmLogicalVolume:    lv_swap
+    mkswap "/dev/$lvmVolumeGroup/$lvmLogicalVolume"
+    result=$?
+    # Prüfen, ob $result -not_equal 0 (Fehler beim Anlegen des Swap-Dateisystems)
+    if [ $result -ne 0 ]; then
 
-    # ToDo: Rückgabewert prüfen!
+        # mkswap hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
+        Log "regular" "ERROR" "main: ................................. Fehler $result (mkswap)"
+        exit $result
+    fi
 else
 
     # Dateisystem nicht unterstützt -> Abbruch
-    exit 1
+    Log "regular" "ERROR" "main: ................................. Fehler $rERROR_FilesystemNotSupported (Nicht unterstütztes Dateisystem)"
+    exit $rERROR_FilesystemNotSupported
 fi
 
 ### -----------------------------------------------------------------------------------------------
 ### Die folgenden Aktionen nur ausführen, wenn kein swap-FS geliefert wird
 
 # Prüfen, ob kein swap-FS geliefert wird
-# varname:      swap        (filesystem)
-if [ "swap" != "swap" ]; then
+# fsType:      swap        (filesystem)
+if [ "$fsType" != "swap" ]; then
 
     ### ===========================================================================================
     ### Quell-Dateisystem mounten
+
+    ### fstab aus gemounteter Source-Partition lesen -> root-Partition holen, source dismounten und
+    ### root-partition wie ins fstab gelesen mounten
 
     # ToDo: Quell-Dateisystem komplett aus der fstab ermitteln und mounten! Damit ist parent
     #       obsolete.
