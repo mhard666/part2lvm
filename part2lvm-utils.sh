@@ -19,6 +19,7 @@ rERROR_RunNotAsRoot=2000
 rERROR_WrongParameters=2001
 rERROR_FileNotFound=2002
 
+rERROR_FilesystemNotSupported=2008
 rERROR_PathNotEmpty=2009
 rERROR_PathNotExist=2010
 rERROR_IncludingFail=2011
