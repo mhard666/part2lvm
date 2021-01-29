@@ -257,3 +257,70 @@ function prepareMountAndTest() {
     # Erfolgreich durchgelaufen
     return 0
 }
+
+
+# =========================================================
+# Funktion:  getRootFromFstab()
+# Aufgabe:   liefert den root-Eintrag aus einer fstab
+#            Die fstab kann in einer Partition liegen,
+#            welche vorher gemounted werden muss, oder an 
+#            einer zu benennenden Stelle im Dateisystem.
+# Parameter: $1 Path
+# Return:    root-Device: wenn die fstab erfolgreich
+#                         ausgelesen werden konnte
+#            Im Fehlerfall wird ein leerer String
+#            zurückgegeben.
+# =========================================================
+function getRootFromFstab() {
+    # Parameter prüfen
+    if [ $# -lt 1 ]
+    then
+        echo "usage: $0 PATH"
+        return $rERROR_WrongParameters
+    fi
+
+    # Übergabeparameter abholen
+    gRFF_Path=$1
+
+    # Prüfen, ob gRFF_Path als Datei existiert
+    if [ -f $gRFF_Path ]; then 
+
+        # Datei existiert -> Zeile mit root-Eintrag ermitteln.
+        row=$(grep -E '^[^#].+\s\/\s{2,}(ext[2-4]|xfs|btrfs)' $gRFF_Path)
+
+        # Prüfen, ob $row != "" (Wenn $row != "" ist eine root-Partition vorhanden...)
+        if [ "$row" != "" ]; then
+
+            # $row ist nicht leer -> es wurde ein Eintrag für eine root-Partition geliefert
+            # Ergebnis in $row zerlegen und den ersten Block zurückgeben (das root-Filesystem, entweder als UUID oder Device)
+            # UUID:   UUID=xxxxx-xxxxxx-xxxxxx-xxxxxx
+            # Device: /dev/sda3
+            rootEntry=$(echo $row | awk '{print $1}')
+
+            # $rootEntry zerlegen
+            rootUuid=$(echo $rootEntry | grep "UUID")
+            if [ "$rootUuid" != "" ]; then
+
+                # rootEntry mit UUID gefunden
+                echo $(echo $rootUuid | awk -F'=' '{print $2}')
+            else
+
+                # rootEntry mit Device
+                echo $rootEntry
+            fi
+
+            # Rückgabewert 0 - alles ok.
+            return 0
+        else
+
+            # Es wurde keine root-Partition geliefert -> Fehler und Abbruch
+            Log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_NoRootEntryFstab (kein root-Eintrag in fstab)"
+            return $rERROR_NoRootEntryFstab
+        fi
+    else
+
+        # Datei existiert nicht oder Pfad ist keine Datei
+        Log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_FileNotFound (fstab nicht gefunden oder Pfad ist keine Datei)"
+        return $rERROR_FileNotFound
+    fi
+}
