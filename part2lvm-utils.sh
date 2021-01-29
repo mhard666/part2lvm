@@ -9,25 +9,25 @@
 # Author: Mirko Härtwig
 
 # =================================================================================================
-# Konstanten
+# Konstanten (0..255)
 # =================================================================================================
 # rWARNING_xxx : return Codes WARNING ab 1000
-rWARNING_PathNotEmpty=1009
+rWARNING_PathNotEmpty=109
 
 # rERROR_xxx : return Codes ERROR ab 2000
-rERROR_RunNotAsRoot=2000
-rERROR_WrongParameters=2001
-rERROR_FileNotFound=2002
+rERROR_RunNotAsRoot=200
+rERROR_WrongParameters=201
+rERROR_FileNotFound=202
 
-rERROR_FilesystemNotSupported=2008
-rERROR_PathNotEmpty=2009
-rERROR_PathNotExist=2010
-rERROR_IncludingFail=2011
-rERROR_NoRootEntryFstab=2012
-rERROR_MountUnsuccessful=2013
-rERROR_MountFailed=2014
+rERROR_FilesystemNotSupported=208
+rERROR_PathNotEmpty=209
+rERROR_PathNotExist=210
+rERROR_IncludingFail=211
+rERROR_NoRootEntryFstab=212
+rERROR_MountUnsuccessful=213
+rERROR_MountFailed=214
 
-rERROR_UndefinedFailure=2499
+rERROR_UndefinedFailure=255
 
 
 # =================================================================================================
@@ -200,6 +200,7 @@ function prepareMountAndTest() {
     if [ $result -eq 0 ]; then
 
         # Rückgabewert 0 -> Verzeichnis existiert oder wurde angelegt
+        echo ""
     else
 
         # Rückgabewert > 0 -> Fehler beim Anlegen des Verzeichnisses -> Abbruch
@@ -213,6 +214,7 @@ function prepareMountAndTest() {
     if [ $result -eq 0 ]; then
 
         # Rückgabewert 0 -> Verzeichnis existiert oder wurde angelegt
+        echo ""
     elif [ $result -eq $rWARNING_PathNotEmpty ]; then
 
         # Rückgabewert = $rWARNING_PathNotEmpty -> Abfrage Abbruch/Weiter (wenn weiter, wird trotzdem 
@@ -266,10 +268,9 @@ function prepareMountAndTest() {
 #            welche vorher gemounted werden muss, oder an 
 #            einer zu benennenden Stelle im Dateisystem.
 # Parameter: $1 Path
-# Return:    root-Device: wenn die fstab erfolgreich
-#                         ausgelesen werden konnte
-#            Im Fehlerfall wird ein leerer String
-#            zurückgegeben.
+# Return:    0: Wenn ok und root ein Device-String
+#            1: Wenn ok und root ein UUID
+#            $rERROR_xxxxxx: Bei Fehler.
 # =========================================================
 function getRootFromFstab() {
     # Parameter prüfen
@@ -295,17 +296,18 @@ function getRootFromFstab() {
             # Ergebnis in $row zerlegen und den ersten Block zurückgeben (das root-Filesystem, entweder als UUID oder Device)
             # UUID:   UUID=xxxxx-xxxxxx-xxxxxx-xxxxxx
             # Device: /dev/sda3
-            rootEntry=$(echo $row | awk '{print $1}')
+            rootEntry=$(echo "$row" | awk '{print $1}')
 
             # $rootEntry zerlegen
-            rootUuid=$(echo $rootEntry | grep "UUID")
+            rootUuid=$(echo "$rootEntry" | grep "UUID")
             if [ "$rootUuid" != "" ]; then
 
-                # rootEntry mit UUID gefunden
-                echo $(echo $rootUuid | awk -F'=' '{print $2}')
+                # rootEntry mit UUID gefunden -> ausgeben
+                echo $(echo "$rootUuid" | awk -F'=' '{print $2}')
+                return 1
             else
 
-                # rootEntry mit Device
+                # rootEntry mit Device -> ausgeben
                 echo $rootEntry
             fi
 
@@ -314,13 +316,13 @@ function getRootFromFstab() {
         else
 
             # Es wurde keine root-Partition geliefert -> Fehler und Abbruch
-            Log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_NoRootEntryFstab (kein root-Eintrag in fstab)"
+            log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_NoRootEntryFstab (kein root-Eintrag in fstab)"
             return $rERROR_NoRootEntryFstab
         fi
     else
 
         # Datei existiert nicht oder Pfad ist keine Datei
-        Log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_FileNotFound (fstab nicht gefunden oder Pfad ist keine Datei)"
+        log "regular" "ERROR" "getRootFromFstab: ..................... Fehler $rERROR_FileNotFound (fstab nicht gefunden oder Pfad ist keine Datei)"
         return $rERROR_FileNotFound
     fi
 }
