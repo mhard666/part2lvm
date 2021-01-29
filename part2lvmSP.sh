@@ -30,13 +30,13 @@
 # =================================================================================================
 # Konstanten
 # =================================================================================================
-# rWARNING_xxx : return Codes WARNING ab 1000 (Globale Fehlercodes)
-# rWARNING_xxx : return Codes WARNING ab 1500 (Script-spezifische Fehlercodes)
+# rWARNING_xxx : return Codes WARNING ab 100 (Globale Fehlercodes)
+# rWARNING_xxx : return Codes WARNING ab 150 (Script-spezifische Fehlercodes)
 
-# rERROR_xxx : return Codes ERROR ab 2000 (Globale Fehlercodes)
-rERROR_IncludingFail=2011
+# rERROR_xxx : return Codes ERROR ab 200 (Globale Fehlercodes)
+rERROR_IncludingFail=211
 
-# rERROR_xxx : return Codes ERROR ab 2500 (Script-spezifische Fehlercodes)
+# rERROR_xxx : return Codes ERROR ab 250 (Script-spezifische Fehlercodes)
 
 
 # ================================================================================================
@@ -104,7 +104,7 @@ if [ $pv == "" ]; then
     if [ $result -ne 0 ]; then
 
         # pvcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
-        Log "regular" "ERROR" "main: ................................. Fehler $result (pvcreate)"
+        log "regular" "ERROR" "main: ................................. Fehler $result (pvcreate)"
         exit $result
     fi
 fi
@@ -126,7 +126,7 @@ if [ $vg == "" ]; then
     if [ $result -ne 0 ]; then
 
         # vgcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
-        Log "regular" "ERROR" "main: ................................. Fehler $result (vgcreate)"
+        log "regular" "ERROR" "main: ................................. Fehler $result (vgcreate)"
         exit $result
     fi
 else
@@ -154,7 +154,7 @@ if [ $lv == "" ], then
     if [ $result -ne 0 ]; then
 
         # lvcreate hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
-        Log "regular" "ERROR" "main: ................................. Fehler $result (lvcreate)"
+        log "regular" "ERROR" "main: ................................. Fehler $result (lvcreate)"
         exit $result
     fi
 else
@@ -180,7 +180,7 @@ if [ "$fsType" == "ext4" ]; then
     if [ $result -ne 0 ]; then
 
         # mkfs.ext4 hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
-        Log "regular" "ERROR" "main: ................................. Fehler $result (mkfs.ext4)"
+        log "regular" "ERROR" "main: ................................. Fehler $result (mkfs.ext4)"
         exit $result
     fi
 elif [ "$fsType" == "swap" ]; then
@@ -194,13 +194,13 @@ elif [ "$fsType" == "swap" ]; then
     if [ $result -ne 0 ]; then
 
         # mkswap hat nicht 0 zurückgegeben -> Fehler bei der Ausführung -> Abbruch
-        Log "regular" "ERROR" "main: ................................. Fehler $result (mkswap)"
+        log "regular" "ERROR" "main: ................................. Fehler $result (mkswap)"
         exit $result
     fi
 else
 
     # Dateisystem nicht unterstützt -> Abbruch
-    Log "regular" "ERROR" "main: ................................. Fehler $rERROR_FilesystemNotSupported (Nicht unterstütztes Dateisystem)"
+    log "regular" "ERROR" "main: ................................. Fehler $rERROR_FilesystemNotSupported (Nicht unterstütztes Dateisystem)"
     exit $rERROR_FilesystemNotSupported
 fi
 
