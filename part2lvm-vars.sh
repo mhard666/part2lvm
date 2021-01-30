@@ -13,6 +13,9 @@ devPhysicalVolume="/dev/sda3"                   # Partition auf der das Physical
 devSourcePartition="/dev/sda2"                  # Quell-Partition (root-Partition)
 
 ### Mountpoints
+mpSource="/mnt/src"                             # Mountpoint für Quellsystem
+mpDest="/mnt/dst"                               # Mountpoint für die Zielpartition (nur zum syncen der Daten)
+mpRoot="/mnt/root"                              # Mountpoint für die root-Partition (nur zum initialen Lesen der fstab)
 
 ### LVM
 lvmVolumeGroup="vg_debian"                      # Volume Group, die im PV angelegt wird
