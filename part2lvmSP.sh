@@ -204,21 +204,44 @@ else
     exit $rERROR_FilesystemNotSupported
 fi
 
+### ===========================================================================================
+### Quell-Dateisystem mounten
+
+# Das Quell-Dateisystem muss vollständig gemountet werden, auch wenn die aktuelle Partition
+# eine Swap-Partition ist, da diese in die fstab in der root-Partition eingetragen werden muss!
+
+### ToDo: fstab aus gemounteter Source-Partition lesen -> root-Partition holen, source 
+###       dismounten und root-partition wie ins fstab gelesen mounten
+
+
+rootPart=$(getRootFromFstab "fstab")
+result=$?
+if [ $result -eq 0 ]; then
+
+    # Device zurückgeliefert
+    echo $rootPart
+elif [ $result -eq 1 ]; then 
+
+    # UUID zurückgeliefert
+    echo $rootPart
+else
+
+    # Fehler -> Abbruch
+    log "regular" "ERROR" "main: ................................. Fehler $result (root Partition konnte nicht aus fstab gelesen werden)"
+    exit $result
+fi
+
+# ToDo: Quell-Dateisystem komplett aus der fstab ermitteln und mounten! Damit ist parent
+#       obsolete.
+
+mountFstab "fstab" "mnt/src"
+
 ### -----------------------------------------------------------------------------------------------
 ### Die folgenden Aktionen nur ausführen, wenn kein swap-FS geliefert wird
 
 # Prüfen, ob kein swap-FS geliefert wird
 # fsType:      swap        (filesystem)
 if [ "$fsType" != "swap" ]; then
-
-    ### ===========================================================================================
-    ### Quell-Dateisystem mounten
-
-    ### fstab aus gemounteter Source-Partition lesen -> root-Partition holen, source dismounten und
-    ### root-partition wie ins fstab gelesen mounten
-
-    # ToDo: Quell-Dateisystem komplett aus der fstab ermitteln und mounten! Damit ist parent
-    #       obsolete.
 
     # Mounten
     # varname:      /dev/sda2       Quell-Partition
