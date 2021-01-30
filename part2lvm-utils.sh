@@ -333,8 +333,8 @@ function getFstab {
             # Mounteintrag gefunden
             echo "$gF_root wurde unter $gF_mountpoint gemounted..."
 
-            # fstab ins scriptverzeichnis als fstab.tmp kopieren
-            cp "$gF_mountpoint/etc/fstab" "$gF_destination/fstab.tmp"
+            # fstab ins scriptverzeichnis als fstab.tmp kopieren (erzwingen)
+            cp -f "$gF_mountpoint/etc/fstab" "$gF_destination/fstab.tmp"
             result=$?
             if [ $result -ne 0 ]; then
 
