@@ -204,6 +204,20 @@ else
     exit $rERROR_FilesystemNotSupported
 fi
 
+
+### ===========================================================================================
+### Fstab von der root-Partition holen
+
+getFstab $devSourcePartition $mpRoot
+result=$?
+if [ $result -ne 0 ]; then
+
+    # Fehler -> Abbruch
+    log "regular" "ERROR" "main: ................................. Fehler $result (fstab konnte nicht von der root-Partition geholt werden)"
+    exit $result
+fi
+
+
 ### ===========================================================================================
 ### Quell-Dateisystem mounten
 
@@ -213,7 +227,7 @@ fi
 ### ToDo: fstab aus gemounteter Source-Partition lesen -> root-Partition holen, source 
 ###       dismounten und root-partition wie ins fstab gelesen mounten
 
-
+### OBSOLETE!!!
 rootPart=$(getRootFromFstab "fstab")
 result=$?
 if [ $result -eq 0 ]; then
