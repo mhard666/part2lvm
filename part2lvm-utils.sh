@@ -262,6 +262,119 @@ function prepareMountAndTest() {
 
 
 # =========================================================
+# Funktion:     getFstab()
+# Aufgabe:      holt /etc/fstab von der root-Partition
+#               und legt sie im Live-System ab. Dazu wird
+#               die root-Partition gemounted, die Datei
+#               kopiert, anschließend die root-Partition
+#.              wieder dismounted
+# Parameter:    $1 root-Partition
+#               $2 Mountpoint
+#               $3 Zielverzeichnis (optional)
+# Return:       0:    Ok
+#               2001: Wenn Fehler in Parameterübergabe
+# Echo:         String
+# =========================================================
+function getFstab {
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        echo "usage: $0 ROOTDEVICE MOUNTPOINT [DESTINATION]"
+        log "regular" "ERROR" "getFstab(): ........................... Fehler bei Parameterübergabe"
+        return $rERROR_WrongParameters
+    fi
+
+    # Übergabeparameter abholen
+    gF_root=$1
+    gF_mountpoint=$2
+    gF_destination=$3
+
+    # Prüfen, ob Zielverzeichnis leer ist
+    if [ "$gF_destination" == "" ]; then
+
+        # Zielverzeichnis ist leer -> Zielverzeichnis = pwd
+        gF_destination=$(pwd)
+    fi
+
+    # Prüfen, ob das Zielverzeichnis nicht existiert
+    if [ ! -d $gF_destination ]; then
+
+        # Zielverzeichnis existiert nicht -> Abbruch
+        log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_PathNotExist Abbruch, Zielverzeichnis existiert nicht."
+        return $rERROR_PathNotExist
+    fi
+
+    # Prüfen, ob Mountpoint existiert
+    if [ -d $gF_mountpoint ]; then
+
+        # Verzeichnis für Mountpoint existiert -> root mounten
+        mount $gF_root $gF_mountpoint
+        result=$?
+        if [ $result -ne 0 ]; then
+
+            # mount mit Fehler beendet -> Abbruch
+            log "regular" "ERROR" "getFstab(): ........................... Fehler $result (root Partition konnte nicht temporär gemountet werden)"
+            return $result
+        fi
+
+        # Mount-Eintrag ermitteln
+        # $gF_root:          /dev/sda2
+        # $gF_mountpoint:    /mnt/root
+        found=$(mount | grep "$gF_mountpoint " | grep "$gR_root ")
+
+        # Prüfen, ob Mounteintrag gefunden wurde
+        if [ "$found" == "" ]; then
+
+            # Mounteintrag nicht gefunden -> Abbruch
+            log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_MountUnsuccessful (kein Mount-Eintrag gefunden)"
+            return $rERROR_MountUnsuccessful
+        else
+
+            # Mounteintrag gefunden
+            echo "$gF_root wurde unter $gF_mountpoint gemounted..."
+
+            # fstab ins scriptverzeichnis als fstab.tmp kopieren
+            cp "$gF_mountpoint/etc/fstab" "$gF_destination/fstab.tmp"
+            result=$?
+            if [ $result -ne 0 ]; then
+
+                # Fehler beim Kopieren -> Abbruch
+                log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_UndefinedFailure (Fehler beim Kopieren der fstab)"
+                return $rERROR_UndefinedFailure
+            else
+
+                # kein Fehler beim kopieren -> Prüfen, ob Datei im Ziel erstellt wurde
+                if [ ! -f "$gF_destination/fstab.tmp" ]; then
+
+                    # nicht vorhanden
+                    log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_UndefinedFailure (fstab.tmp nicht vorhanden)"
+                    return $rERROR_UndefinedFailure
+                fi
+            fi
+
+            # root dismounten
+            umount "$devSourcePartition"
+            result=$?
+            if [ $result -ne 0 ]; then
+
+                # Dismount fehlgeschlagen
+                log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_UndefinedFailure (Dismount der temporär gemounteten root Partition fehlgeschlagen)"
+                return $rERROR_UndefinedFailure
+            fi
+        fi
+    else
+
+        # Mountpoint nicht vorhanden
+        log "regular" "ERROR" "getFstab(): ........................... Fehler $rERROR_UndefinedFailure (Mountpoint nicht vorhanden)"
+        return $rERROR_PathNotExist
+    fi
+
+    # Erfolgreich durchgelaufen -> Rückgabewert 0
+    return 0
+}
+
+
+# =========================================================
 # Funktion:  getRootFromFstab()
 # Aufgabe:   liefert den root-Eintrag aus einer fstab
 #            Die fstab kann in einer Partition liegen,
