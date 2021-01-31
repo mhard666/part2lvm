@@ -375,6 +375,132 @@ function getFstab {
 
 
 # =========================================================
+# Funktion:     mountFstab()
+# Aufgabe:      iteriert /etc/fstab und mounted alle
+#               relevanten Einträge in einem temporären
+#               Mountpoint
+# Parameter:    $1 Pfad zur fstab
+#               $2 Mountpoint
+# Return:       0:    Ok
+#               201: Wenn Fehler in Parameterübergabe
+# =========================================================
+function mountFstab {
+
+    # Parameter prüfen
+    if [ $# -lt 2 ]
+    then
+        log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_WrongParameters (Fehler bei Parameterübergabe)"
+        return $rERROR_WrongParameters
+    fi
+
+    # Übergabeparameter abholen
+    mF_fstab=$1
+    mF_mountpoint=$2
+
+    # Alle Einträge der /etc/fstab liefern, die 
+    # - nicht mit # beginnen (Kommentare ausschließen)
+    # - nicht vom Typ swap sind
+    # - nicht vom Typ udf oder iso9600 sind (optische Datenträger)
+    # sollte alles liefern, was mit U(UID) oder /(dev/...) beginnt und Filesystem ext2, ext3 oder ext4 ist.
+    # davon in jeder Zeile den 2. Abschnitt liefern und alphabetisch sortieren...
+    line=$(grep -v '^#' "$mF_fstab" | grep -v '.swap.' | grep -v 'udf' | grep -v 'iso9660' | awk '{print $2}' | sort)
+
+    # Alle Zeilen von $line in einer Schleife durchlaufen...
+    while read entry
+    do
+
+        # Zeile ausgeben...
+        echo $entry 
+
+        # in Einzelbestandteile zerlegen
+        # $entry liefert den Mountpoint, Eintrag in der fstab suchen und diese Zeile zurückgeben
+        r=$(grep "$entry " "$mF_fstab")
+
+        # Prüfen, ob $r kein leerer String ist
+        if [ "r" != "" ]; then
+
+            uuid=$(echo "$r" | awk '{print $1}' | grep '^UUID' | cut -d = -f 2) # UUID
+            device=$(echo "$r" | awk '{print $1}' | grep '^\/dev\/')    # Gerät
+            mountpoint=$(echo "$r" | awk '{print $2}')    # Mountpoint
+            filesystem=$(echo "$r" | awk '{print $3}')    # Filesystem
+
+            echo $device
+            echo $mountpoint
+            echo $filesystem
+
+            if [ "$uuid" != "" ]; then
+
+                # wenn $uuid einen Wert enthält (eine UUID) -> prüfen, ob für diese UUID ein Gerät existiert
+                if [ -h /dev/disk/by-uuid/$uuid ]; then
+
+                    # Gerät existiert, mit UUID mounten
+                    log "regular" "INFO" "mountFstab(): ......................... $uuid found in fstab"
+                    echo $(grep "$uuid" /etc/fstab)  ..... found, mounting
+                    # ToDo: Mountpoint darf nicht mit / enden (root)!
+                    mount -u "$uuid" "$mF_mountpoint$mountpoint"
+                    result=$?
+                    if [ $result -ne 0 ]; then
+
+                        # Fehler beim mounten
+                        log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure (Fehler bei mounten mit UUID)"
+                        return $rERROR_UndefinedFailure
+                    else
+
+                        # mounten erfolgreich -> Gegenprüfung
+                        test=$(mount | grep "$device" | grep "$mF_mountpoint$mountpoint")
+                        # Prüfen ob $test ein leerer String ist
+                        if [ "$test" == "" ]; then
+
+                            # Mounten fehlgeschlagen
+                            log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure ($uuid konnte nicht gemontet werden)"
+                            return $rERROR_UndefinedFailure
+                        fi
+                    fi
+                else
+
+                    # UUID geliefert aber UUID existiert nicht als Gerät -> Skip
+                    log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure (UUID geliefert aber UUID existiert nicht als Gerät)"
+                    return $rERROR_UndefinedFailure
+                fi
+            else
+
+                # keine UUID geliefert, sondern Gerätepfad -> Mit Gerätepfad mounten
+                log "regular" "INFO" "mountFstab(): ......................... $device found in fstab)"
+                # ToDo: Mountpoint darf nicht mit / enden!
+                mount "$device" "$mF_mountpoint$mountpoint"
+                result=$?
+                if [ $result -ne 0 ]; then
+
+                    # Fehler beim mounten
+                    log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure (Fehler bei mounten mit Device)"
+                    return $rERROR_UndefinedFailure
+                else
+
+                    # mounten erfolgreich -> Gegenprüfung
+                    test=$(mount | grep "$device" | grep "$mF_mountpoint$mountpoint")
+                    # Prüfen ob $test ein leerer String ist
+                    if [ "$test" == "" ]; then
+
+                        # Mounten fehlgeschlagen
+                        log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure ($device konnte nicht gemontet werden)"
+                        return $rERROR_UndefinedFailure
+                    fi
+                fi
+            fi
+        else
+
+            # Zeile in fstab nicht gefunden (eigentlich unmöglich) -> Fehler, Abbruch
+            log "regular" "ERROR" "mountFstab(): ......................... Fehler $rERROR_UndefinedFailure (Zeile in fstab nicht gefunden)"
+            return $rERROR_UndefinedFailure
+        fi
+    done <<<"$line"
+
+    # Erfolgreich durchgelaufen -> Rückgabewert 0
+    return 0
+}
+
+
+# =========================================================
 # Funktion:  getRootFromFstab()
 # Aufgabe:   liefert den root-Eintrag aus einer fstab
 #            Die fstab kann in einer Partition liegen,
