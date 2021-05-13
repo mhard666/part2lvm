@@ -437,7 +437,8 @@ function mountFstab {
                     log "regular" "INFO" "mountFstab(): ......................... $uuid found in fstab"
                     echo $(grep "$uuid" /etc/fstab)  ..... found, mounting
                     # ToDo: Mountpoint darf nicht mit / enden (root)!
-                    mount -u "$uuid" "$mF_mountpoint$mountpoint"
+                    mp=$mF_mountpoint$mountpoint
+                    mount -u "$uuid" "${mp%/*}"
                     result=$?
                     if [ $result -ne 0 ]; then
 
@@ -467,7 +468,8 @@ function mountFstab {
                 # keine UUID geliefert, sondern Gerätepfad -> Mit Gerätepfad mounten
                 log "regular" "INFO" "mountFstab(): ......................... $device found in fstab)"
                 # ToDo: Mountpoint darf nicht mit / enden!
-                mount "$device" "$mF_mountpoint$mountpoint"
+                mp=$mF_mountpoint$mountpoint
+                mount "$device" "${mp%/*}"
                 result=$?
                 if [ $result -ne 0 ]; then
 
